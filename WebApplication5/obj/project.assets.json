@@ -2497,6 +2497,16 @@
         "build": {
           "buildTransitive/net6.0/_._": {}
         }
+      },
+      "dto/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/dto.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/dto.dll": {}
+        }
       }
     }
   },
@@ -6819,6 +6829,11 @@
         "system.threading.tasks.dataflow.nuspec",
         "useSharedDesignerContext.txt"
       ]
+    },
+    "dto/1.0.0": {
+      "type": "project",
+      "path": "../dto/dto.csproj",
+      "msbuildProject": "../dto/dto.csproj"
     }
   },
   "projectFileDependencyGroups": {
@@ -6827,7 +6842,8 @@
       "Microsoft.EntityFrameworkCore.Tools >= 9.0.3",
       "Microsoft.VisualStudio.Web.CodeGeneration.Design >= 9.0.0",
       "Npgsql.EntityFrameworkCore.PostgreSQL >= 9.0.4",
-      "Swashbuckle.AspNetCore >= 6.4.0"
+      "Swashbuckle.AspNetCore >= 6.4.0",
+      "dto >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -6854,7 +6870,11 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj": {
+              "projectPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj"
+            }
+          }
         }
       },
       "warningProperties": {

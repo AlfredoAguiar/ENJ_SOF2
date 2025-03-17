@@ -14,19 +14,19 @@ public class exemple_conect_to_API
     }
 
     // Obter lista de utilizadores
-    public async Task<List<UtilizadorDto>> GetUtilizadoresAsync()
+    public async Task<List<UtilizadoreDto>> GetUtilizadoresAsync()
     {
-        return await _httpClient.GetFromJsonAsync<List<UtilizadorDto>>("https://localhost:5189/api/utilizadore");
+        return await _httpClient.GetFromJsonAsync<List<UtilizadoreDto>>("https://localhost:5189/api/utilizadore");
     }
 
     // Obter um utilizador por ID
-    public async Task<UtilizadorDto> GetUtilizadorAsync(Guid id)
+    public async Task<UtilizadoreDto> GetUtilizadorAsync(Guid id)
     {
-        return await _httpClient.GetFromJsonAsync<UtilizadorDto>($"https://localhost:5189/api/utilizadore/{id}");
+        return await _httpClient.GetFromJsonAsync<UtilizadoreDto>($"https://localhost:5189/api/utilizadore/{id}");
     }
 
     // Adicionar um utilizador
-    public async Task<bool> AddUtilizadorAsync(UtilizadorDto utilizadorDto)
+    public async Task<bool> AddUtilizadorAsync(UtilizadoreDto utilizadorDto)
     {
         var response = await _httpClient.PostAsJsonAsync("https://localhost:5189/api/utilizadore", utilizadorDto);
         return response.IsSuccessStatusCode;
