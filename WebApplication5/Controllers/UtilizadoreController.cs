@@ -22,7 +22,6 @@ namespace WebApplication1.Controllers
         {
             var utilizadores = await _context.Utilizadores.Include(u => u.Permissao).ToListAsync();
 
-            // Map the list of Utilizadore models to UtilizadoreDto
             var utilizadoreDtos = utilizadores.Select(u => new UtilizadoreDto
             {
                 Id = u.Id,
@@ -47,8 +46,7 @@ namespace WebApplication1.Controllers
             {
                 return NotFound();
             }
-
-            // Map the Utilizadore model to UtilizadoreDto
+            
             var utilizadoreDto = new UtilizadoreDto
             {
                 Id = utilizadore.Id,
@@ -70,8 +68,7 @@ namespace WebApplication1.Controllers
             {
                 return BadRequest();
             }
-
-            // Map DTO to the Utilizadore model
+            
             var utilizadore = new Utilizadore
             {
                 Id = utilizadoreDto.Id,
@@ -79,7 +76,7 @@ namespace WebApplication1.Controllers
                 Email = utilizadoreDto.Email,
                 Senha = utilizadoreDto.Senha,
                 Cargo = utilizadoreDto.Cargo,
-                PermissaoId = utilizadoreDto.PermissaoId // Only updating the PermissaoId
+                PermissaoId = utilizadoreDto.PermissaoId 
             };
 
             _context.Entry(utilizadore).State = EntityState.Modified;
@@ -115,13 +112,12 @@ namespace WebApplication1.Controllers
                 Email = utilizadoreDto.Email,
                 Senha = utilizadoreDto.Senha,
                 Cargo = utilizadoreDto.Cargo,
-                PermissaoId = utilizadoreDto.PermissaoId // Only storing PermissaoId
+                PermissaoId = utilizadoreDto.PermissaoId 
             };
 
             _context.Utilizadores.Add(utilizadore);
             await _context.SaveChangesAsync();
-
-            // Map the Utilizadore model to the DTO to return to the client
+            
             var createdUtilizadoreDto = new UtilizadoreDto
             {
                 Id = utilizadore.Id,
@@ -129,7 +125,7 @@ namespace WebApplication1.Controllers
                 Email = utilizadore.Email,
                 Senha = utilizadore.Senha,
                 Cargo = utilizadore.Cargo,
-                PermissaoId = utilizadore.PermissaoId // Only returning PermissaoId
+                PermissaoId = utilizadore.PermissaoId 
             };
 
             return CreatedAtAction("GetUtilizadore", new { id = createdUtilizadoreDto.Id }, createdUtilizadoreDto);

@@ -32,7 +32,7 @@ namespace WebApplication1.Controllers
                     NumeroConta = d.NumeroConta,
                     TaxaJuros = d.TaxaJuros,
                     Titulares = d.Titulares,
-                    // Preenchendo a propriedade adicional do DTO
+                    // propriedade adicional do DTO
                     AtivoTipo = d.Ativo != null ? d.Ativo.Tipo : null
                 })
                 .ToListAsync();
@@ -56,7 +56,7 @@ namespace WebApplication1.Controllers
                     NumeroConta = d.NumeroConta,
                     TaxaJuros = d.TaxaJuros,
                     Titulares = d.Titulares,
-                    // Preenchendo a propriedade adicional do DTO
+                    //  propriedade adicional do DTO
                     AtivoTipo = d.Ativo != null ? d.Ativo.Tipo : null
                 })
                 .FirstOrDefaultAsync();
@@ -87,7 +87,7 @@ namespace WebApplication1.Controllers
             _context.Depositos.Add(deposito);
             await _context.SaveChangesAsync();
 
-            // Retornando o DTO após a criação
+            // DTO após a criação
             return CreatedAtAction("GetDeposito", new { id = deposito.Id }, depositoDto);
         }
 

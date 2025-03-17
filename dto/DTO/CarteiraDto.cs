@@ -9,7 +9,7 @@ namespace WebApplication5.DTO
         
         public Guid? AtivoId { get; set; }
         
-        public DateTime DataInicio { get; set; } // Usando DateTime ao invés de DateOnly
+        public DateTime DataInicio { get; set; } 
         
         public double Montante { get; set; }
         

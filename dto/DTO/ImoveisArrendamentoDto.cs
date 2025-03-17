@@ -13,7 +13,7 @@ namespace WebApplication5.DTO
         public double DespesasAnuais { get; set; }
         public double PercentagemPropriedade { get; set; }
 
-        // Propriedades adicionais (caso queira incluir dados de Ativo e Localizacao)
+        // Propriedades adicionais ( incluir dados de Ativo e Localizacao)
         public string? AtivoTipo { get; set; }
         public string? LocalizacaoCidade { get; set; }
     }

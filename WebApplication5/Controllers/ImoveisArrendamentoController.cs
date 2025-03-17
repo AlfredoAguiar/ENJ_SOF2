@@ -35,7 +35,7 @@ namespace WebApplication1.Controllers
                     TaxaCondominio = i.TaxaCondominio,
                     DespesasAnuais = i.DespesasAnuais,
                     PercentagemPropriedade = i.PercentagemPropriedade,
-                    // Preenchendo as propriedades adicionais do DTO
+                    //  propriedades adicionais do DTO
                     AtivoTipo = i.Ativo != null ? i.Ativo.Tipo : null,
                     LocalizacaoCidade = i.Localizacao != null ? i.Localizacao.Cidade : null
                 })
@@ -63,7 +63,7 @@ namespace WebApplication1.Controllers
                     TaxaCondominio = i.TaxaCondominio,
                     DespesasAnuais = i.DespesasAnuais,
                     PercentagemPropriedade = i.PercentagemPropriedade,
-                    // Preenchendo as propriedades adicionais do DTO
+                    //  propriedades adicionais do DTO
                     AtivoTipo = i.Ativo != null ? i.Ativo.Tipo : null,
                     LocalizacaoCidade = i.Localizacao != null ? i.Localizacao.Cidade : null
                 })
@@ -97,7 +97,7 @@ namespace WebApplication1.Controllers
             _context.ImoveisArrendamentos.Add(imovel);
             await _context.SaveChangesAsync();
 
-            // Retornando o DTO após a criação
+            // DTO após a criação
             return CreatedAtAction("GetImoveisArrendamento", new { id = imovel.Id }, imoveisArrendamentoDto);
         }
 

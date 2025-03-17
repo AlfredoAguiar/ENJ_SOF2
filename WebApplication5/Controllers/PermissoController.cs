@@ -63,25 +63,21 @@ public class PermissoController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdatePermisso(Guid id, PermissoDto permisssoDto)
     {
-        // Find the existing record by Id
+
         var permissao = await _context.Permissoes.FindAsync(id);
-    
-        // If not found, return a 404 Not Found
+
         if (permissao == null)
         {
             return NotFound();
         }
-
-        // Map the updated fields from the DTO to the model
+        
         permissao.PodeCriarUtilizadores = permisssoDto.PodeCriarUtilizadores;
         permissao.PodeEditarUtilizadores = permisssoDto.PodeEditarUtilizadores;
         permissao.PodeVerRegistos = permisssoDto.PodeVerRegistos;
         permissao.PodeAlterarPermissoes = permisssoDto.PodeAlterarPermissoes;
-
-        // Save changes to the database
+        
         await _context.SaveChangesAsync();
-
-        // Return no content (HTTP 204) indicating the update was successful
+        
         return NoContent();
     }
 
@@ -89,21 +85,19 @@ public class PermissoController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<PermissoDto>> CreatePermisso(PermissoDto permisssoDto)
     {
-        // Map the DTO to the Model (Entity)
+       
         var permissao = new Permisso
         {
-            Id = Guid.NewGuid(),  // Make sure to set a new GUID (or leave it empty if it's auto-generated)
+            Id = Guid.NewGuid(),  
             PodeCriarUtilizadores = permisssoDto.PodeCriarUtilizadores,
             PodeEditarUtilizadores = permisssoDto.PodeEditarUtilizadores,
             PodeVerRegistos = permisssoDto.PodeVerRegistos,
             PodeAlterarPermissoes = permisssoDto.PodeAlterarPermissoes
         };
 
-        // Add to the database
         _context.Permissoes.Add(permissao);
         await _context.SaveChangesAsync();
 
-        // Map the saved model back to a DTO to return to the client
         var createdPermissoDto = new PermissoDto
         {
             Id = permissao.Id,
@@ -113,7 +107,7 @@ public class PermissoController : ControllerBase
             PodeAlterarPermissoes = permissao.PodeAlterarPermissoes
         };
 
-        // Return the created DTO with a 201 status
+  
         return CreatedAtAction(nameof(GetPermisso), new { id = createdPermissoDto.Id }, createdPermissoDto);
     }
 

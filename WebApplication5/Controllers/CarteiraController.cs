@@ -30,8 +30,8 @@ namespace WebApplication1.Controllers
                     AtivoId = c.AtivoId,
                     DataInicio = c.DataInicio.ToDateTime(TimeOnly.MinValue), // Converte DateOnly para DateTime
                     Montante = c.Montante,
-                    UtilizadorNome = c.Utilizador != null ? c.Utilizador.Nome : null, // Usando o operador ternário para evitar erro
-                    AtivoTipo = c.Ativo != null ? c.Ativo.Tipo : null // Usando o operador ternário para evitar erro
+                    UtilizadorNome = c.Utilizador != null ? c.Utilizador.Nome : null, 
+                    AtivoTipo = c.Ativo != null ? c.Ativo.Tipo : null 
                 })
                 .ToListAsync();
 
@@ -53,8 +53,8 @@ namespace WebApplication1.Controllers
                     AtivoId = c.AtivoId,
                     DataInicio = c.DataInicio.ToDateTime(TimeOnly.MinValue), // Converte DateOnly para DateTime
                     Montante = c.Montante,
-                    UtilizadorNome = c.Utilizador != null ? c.Utilizador.Nome : null, // Usando o operador ternário
-                    AtivoTipo = c.Ativo != null ? c.Ativo.Tipo : null // Usando o operador ternário
+                    UtilizadorNome = c.Utilizador != null ? c.Utilizador.Nome : null, 
+                    AtivoTipo = c.Ativo != null ? c.Ativo.Tipo : null 
                 })
                 .FirstOrDefaultAsync();
 
