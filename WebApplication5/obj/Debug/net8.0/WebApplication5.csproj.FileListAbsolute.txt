@@ -253,3 +253,4 @@ C:\Users\diagu\RiderProjects\ES_2\WebApplication5\bin\Debug\net8.0\ru\Microsoft.
 C:\Users\diagu\RiderProjects\ES_2\WebApplication5\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.Scripting.resources.dll
 C:\Users\diagu\RiderProjects\ES_2\WebApplication5\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.Scripting.resources.dll
 C:\Users\diagu\RiderProjects\ES_2\WebApplication5\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.Scripting.resources.dll
+C:\Users\diagu\RiderProjects\ES_2\WebApplication5\obj\Debug\net8.0\WebApplication5.sourcelink.json

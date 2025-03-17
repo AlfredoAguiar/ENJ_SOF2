@@ -10,5 +10,5 @@ public class UtilizadoreDto
 
     public string Cargo { get; set; }
     public Guid? PermissaoId { get; set; }
-    public PermissoDto? Permissao { get; set; }  // To include the permission details (optional)
+    
 }
