@@ -1,0 +1,12 @@
+C:\Users\diagu\RiderProjects\ES_2\dto\bin\Debug\net8.0\dto.deps.json
+C:\Users\diagu\RiderProjects\ES_2\dto\bin\Debug\net8.0\dto.dll
+C:\Users\diagu\RiderProjects\ES_2\dto\bin\Debug\net8.0\dto.pdb
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\dto.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\dto.AssemblyInfoInputs.cache
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\dto.AssemblyInfo.cs
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\dto.csproj.CoreCompileInputs.cache
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\dto.sourcelink.json
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\dto.dll
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\refint\dto.dll
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\dto.pdb
+C:\Users\diagu\RiderProjects\ES_2\dto\obj\Debug\net8.0\ref\dto.dll
