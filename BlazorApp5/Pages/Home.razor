@@ -1,0 +1,50 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Components.Forms
+@inject NavigationManager Navigation
+
+<EditForm Model="@loginModel" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="login-container">
+        <h2>LOGIN</h2>
+        <div class="form-group">
+            <label for="username">Utilizador:</label>
+            <InputText id="username" @bind-Value="loginModel.Username" />
+        </div>
+        <div class="form-group">
+            <label for="password">Senha:</label>
+            <InputText id="password" type="password" @bind-Value="loginModel.Password" />
+        </div>
+        
+        <button type="submit">Entrar</button>
+        <div class="register-link">
+            <p>Não tem uma conta? <a href="/register">Registre-se</a></p>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private LoginModel loginModel = new LoginModel();
+
+    private void HandleValidSubmit()
+    {
+        // Lógica de autenticação aqui
+        if (loginModel.Username == "admin" && loginModel.Password == "password")
+        {
+            // Redireciona para a página principal ou outra página protegida
+            Navigation.NavigateTo("/welcome");
+        }
+        else
+        {
+            // Mostre uma mensagem de erro
+            // Você pode usar um serviço de notificação ou simplesmente exibir uma mensagem na UI
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+}
