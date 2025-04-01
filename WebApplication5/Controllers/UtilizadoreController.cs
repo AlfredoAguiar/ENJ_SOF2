@@ -32,7 +32,7 @@ namespace WebApplication1.Controllers
                 PermissaoId = u.PermissaoId
             }).ToList();
 
-            return utilizadoreDtos;
+            return Ok(utilizadoreDtos);
         }
 
         // GET: api/Utilizadore/5

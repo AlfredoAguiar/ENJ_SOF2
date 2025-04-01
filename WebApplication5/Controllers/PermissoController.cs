@@ -32,7 +32,7 @@ public class PermissoController : ControllerBase
             })
             .ToListAsync();
 
-        return permissoes;
+        return Ok(permissoes);
     }
 
     // GET: api/Permisso/{id}

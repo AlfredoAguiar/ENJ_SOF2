@@ -32,12 +32,11 @@ namespace WebApplication1.Controllers
                     NumeroConta = d.NumeroConta,
                     TaxaJuros = d.TaxaJuros,
                     Titulares = d.Titulares,
-                    // propriedade adicional do DTO
                     AtivoTipo = d.Ativo != null ? d.Ativo.Tipo : null
                 })
                 .ToListAsync();
 
-            return depositos;
+            return Ok(depositos);
         }
 
         // GET: api/Deposito/5

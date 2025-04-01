@@ -1,4 +1,3 @@
-// Controllers/ImoveisArrendamentoController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication5.DTO;
@@ -41,7 +40,7 @@ namespace WebApplication1.Controllers
                 })
                 .ToListAsync();
 
-            return imoveis;
+            return Ok(imoveis);
         }
 
         // GET: api/ImoveisArrendamento/5

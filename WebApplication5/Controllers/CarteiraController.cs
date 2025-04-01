@@ -21,21 +21,21 @@ namespace WebApplication1.Controllers
         public async Task<ActionResult<IEnumerable<CarteiraDto>>> GetCarteiras()
         {
             var carteiras = await _context.Carteiras
-                .Include(c => c.Utilizador) // Incluindo a navegação do Utilizador
-                .Include(c => c.Ativo) // Incluindo a navegação do Ativo
+                .Include(c => c.Utilizador) 
+                .Include(c => c.Ativo) 
                 .Select(c => new CarteiraDto
                 {
                     Id = c.Id,
                     UtilizadorId = c.UtilizadorId,
                     AtivoId = c.AtivoId,
-                    DataInicio = c.DataInicio.ToDateTime(TimeOnly.MinValue), // Converte DateOnly para DateTime
+                    DataInicio = c.DataInicio.ToDateTime(TimeOnly.MinValue), 
                     Montante = c.Montante,
                     UtilizadorNome = c.Utilizador != null ? c.Utilizador.Nome : null, 
                     AtivoTipo = c.Ativo != null ? c.Ativo.Tipo : null 
                 })
                 .ToListAsync();
 
-            return carteiras;
+            return Ok(carteiras);
         }
 
         // GET: api/Carteira/5
@@ -51,7 +51,7 @@ namespace WebApplication1.Controllers
                     Id = c.Id,
                     UtilizadorId = c.UtilizadorId,
                     AtivoId = c.AtivoId,
-                    DataInicio = c.DataInicio.ToDateTime(TimeOnly.MinValue), // Converte DateOnly para DateTime
+                    DataInicio = c.DataInicio.ToDateTime(TimeOnly.MinValue), 
                     Montante = c.Montante,
                     UtilizadorNome = c.Utilizador != null ? c.Utilizador.Nome : null, 
                     AtivoTipo = c.Ativo != null ? c.Ativo.Tipo : null 
