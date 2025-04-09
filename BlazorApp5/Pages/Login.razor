@@ -1,0 +1,69 @@
+﻿@page "/login"
+@inject NavigationManager NavigationManager
+
+<div class="container">
+    <div class="content first-content">
+        <div class="first-column">
+            <h2 class="title title-primary">Não tem conta?</h2>
+            <p class="description description-primary">Para continuar conectado a nós</p>
+            <p class="description description-primary">por-favor regista te com os teus dados pessoais</p>
+            <button @onclick="BackToLogin" class="btn btn-primary">sign out</button>
+        </div>
+        <div class="second-column">
+            <br/><br/><br/><br/><br/><br/>
+            <h2 class="title title-second">Faça o seu Login</h2>
+            <p class="description description-second">insira seu email e palavra-pass</p>
+            <EditForm Model="registerModel" OnValidSubmit="HandleRegistration" class="form-container">
+                <DataAnnotationsValidator/>
+                <ValidationSummary/>
+                <div class="form">
+                    <div class="input-group">
+                        <i class="far fa-envelope icon-modify"></i>
+                        <InputText @bind-Value="registerModel.Email" placeholder="Email" class="form-input"/>
+                    </div>
+
+                    <div class="input-group">
+                        <i class="fas fa-lock icon-modify"></i>
+                        <InputText @bind-Value="registerModel.Password" type="password" placeholder="Password" class="form-input"/>
+                    </div>
+
+                    <button type="submit" class="btn btn-second">Login</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private class RegisterModel
+    {
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string Password { get; set; }
+        public string ConfirmPassword { get; set; }
+    }
+
+    private RegisterModel registerModel = new RegisterModel();
+
+    private void BackToLogin()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void HandleRegistration()
+    {
+        // Validar se as senhas coincidem
+        if (registerModel.Password != registerModel.ConfirmPassword)
+        {
+            // Adicionar lógica para mostrar erro
+            Console.WriteLine("Passwords don't match");
+            return;
+        }
+
+        // Lógica de registro do usuário
+        Console.WriteLine($"Registering: {registerModel.Name}, {registerModel.Email}");
+        
+        // Redirecionar para página principal após registro bem-sucedido
+        NavigationManager.NavigateTo("/main");
+    }
+} 

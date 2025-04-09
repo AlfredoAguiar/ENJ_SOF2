@@ -15,4 +15,8 @@
       <ProjectReference Include="..\dto\dto.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="wwwroot\img\" />
+    </ItemGroup>
+
 </Project>

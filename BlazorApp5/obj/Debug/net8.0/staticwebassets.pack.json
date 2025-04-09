@@ -1,27 +1,27 @@
 {
   "Files": [
     {
-      "Id": "C:\\Users\\diagu\\RiderProjects\\ES_2\\BlazorApp5\\bin\\Debug\\net8.0\\wwwroot\\_framework\\blazor.webassembly.js",
+      "Id": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\bin\\Debug\\net8.0\\wwwroot\\_framework\\blazor.webassembly.js",
       "PackagePath": "staticwebassets\\_framework\\blazor.webassembly.js"
     },
     {
-      "Id": "C:\\Users\\diagu\\RiderProjects\\ES_2\\BlazorApp5\\obj\\Debug\\net8.0\\compressed\\epnesyl5og.gz",
+      "Id": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\obj\\Debug\\net8.0\\compressed\\epnesyl5og.gz",
       "PackagePath": "staticwebassets\\_framework\\blazor.webassembly.js.gz"
     },
     {
-      "Id": "C:\\Users\\diagu\\RiderProjects\\ES_2\\BlazorApp5\\wwwroot\\css\\app.css",
+      "Id": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\wwwroot\\css\\app.css",
       "PackagePath": "staticwebassets\\css\\app.css"
     },
     {
-      "Id": "C:\\Users\\diagu\\RiderProjects\\ES_2\\BlazorApp5\\wwwroot\\css\\home.css",
+      "Id": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\wwwroot\\css\\home.css",
       "PackagePath": "staticwebassets\\css\\home.css"
     },
     {
-      "Id": "C:\\Users\\diagu\\RiderProjects\\ES_2\\BlazorApp5\\wwwroot\\icon-192.png",
+      "Id": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\wwwroot\\icon-192.png",
       "PackagePath": "staticwebassets\\icon-192.png"
     },
     {
-      "Id": "C:\\Users\\diagu\\RiderProjects\\ES_2\\BlazorApp5\\wwwroot\\index.html",
+      "Id": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\wwwroot\\index.html",
       "PackagePath": "staticwebassets\\index.html"
     },
     {

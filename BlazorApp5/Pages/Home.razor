@@ -1,50 +1,132 @@
 ﻿@page "/"
-@using Microsoft.AspNetCore.Components.Forms
-@inject NavigationManager Navigation
+@inject NavigationManager NavigationManager
 
-<EditForm Model="@loginModel" OnValidSubmit="@HandleValidSubmit">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+<div class="container">
+    <div class="content @(isSignIn ? "first-content" : "second-content")">
+        <div class="first-column">
+            @if (isSignIn)
+            {
+                <h2 class="title title-primary">Bem-vindo de volta!</h2>
+                <p class="description description-primary">Para continuar conectado a nós</p>
+                <p class="description description-primary">por-favor faz login com os teus dados pessoais</p>
+                <button @onclick="ToggleView" class="btn btn-primary">sign in</button>
+            }
+            else
+            {
+                <h2 class="title title-primary">hello, friend!</h2>
+                <p class="description description-primary">Enter your personal details</p>
+                <p class="description description-primary">and start journey with us</p>
+                <button @onclick="ToggleView" class="btn btn-primary">sign up</button>
+            }
+        </div>
+        <div class="second-column">
+            <br/><br/><br/><br/>
+            @if (isSignIn)
+            {
+                <h2 class="title title-second">Cria uma conta</h2>
+                <p class="description description-second">Insiria os seus dados</p>
+                <EditForm Model="signUpModel" OnValidSubmit="HandleSignUpSubmit" class="form-container">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <div class="form">
+                        <div class="input-group">
+                            <i class="far fa-user icon-modify"></i>
+                            <InputText @bind-Value="signUpModel.Name" placeholder="Name" class="form-input"/>
+                        </div>
 
-    <div class="login-container">
-        <h2>LOGIN</h2>
-        <div class="form-group">
-            <label for="username">Utilizador:</label>
-            <InputText id="username" @bind-Value="loginModel.Username" />
-        </div>
-        <div class="form-group">
-            <label for="password">Senha:</label>
-            <InputText id="password" type="password" @bind-Value="loginModel.Password" />
-        </div>
-        
-        <button type="submit">Entrar</button>
-        <div class="register-link">
-            <p>Não tem uma conta? <a href="/register">Registre-se</a></p>
+                        <div class="input-group">
+                            <i class="far fa-envelope icon-modify"></i>
+                            <InputText @bind-Value="signUpModel.Email" placeholder="Email" class="form-input"/>
+                        </div>
+
+                        <div class="input-group">
+                            <i class="fas fa-lock icon-modify"></i>
+                            <InputText @bind-Value="signUpModel.Password" type="password" placeholder="Password" class="form-input"/>
+                        </div>
+
+                        <button type="submit" class="btn btn-second">sign up</button>
+                    </div>
+                </EditForm>
+            }
+            else
+            {
+                <h2 class="title title-second">sign in to developer</h2>
+                <div class="social-media">
+                    <ul class="list-social-media">
+                        <li class="item-social-media"><i class="fab fa-facebook-f"></i></li>
+                        <li class="item-social-media"><i class="fab fa-google-plus-g"></i></li>
+                        <li class="item-social-media"><i class="fab fa-linkedin-in"></i></li>
+                    </ul>
+                </div>
+                <p class="description description-second">or use your email account:</p>
+                <EditForm Model="signInModel" OnValidSubmit="HandleSignInSubmit" class="form-container">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <div class="form">
+                        <div class="input-group">
+                            <i class="far fa-envelope icon-modify"></i>
+                            <InputText @bind-Value="signInModel.Email" placeholder="Email" class="form-input"/>
+                        </div>
+
+                        <div class="input-group">
+                            <i class="fas fa-lock icon-modify"></i>
+                            <InputText @bind-Value="signInModel.Password" type="password" placeholder="Password" class="form-input"/>
+                        </div>
+
+                        <a class="password" href="#">forgot your password?</a>
+                        <button type="submit" class="btn btn-second">sign in</button>
+                    </div>
+                </EditForm>
+            }
         </div>
     </div>
-</EditForm>
+</div>
 
 @code {
-    private LoginModel loginModel = new LoginModel();
+    private bool isSignIn = true;
 
-    private void HandleValidSubmit()
+    private class SignUpModel
     {
-        // Lógica de autenticação aqui
-        if (loginModel.Username == "admin" && loginModel.Password == "password")
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+
+    private class SignInModel
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+
+    private SignUpModel signUpModel = new SignUpModel();
+    private SignInModel signInModel = new SignInModel();
+
+    private void ToggleView()
+    {
+        // Se estiver na tela de sign in (criar conta) e clicar no botão,
+        // navega para a página de registro
+        if (isSignIn)
         {
-            // Redireciona para a página principal ou outra página protegida
-            Navigation.NavigateTo("/welcome");
+            NavigationManager.NavigateTo("login");
         }
         else
         {
-            // Mostre uma mensagem de erro
-            // Você pode usar um serviço de notificação ou simplesmente exibir uma mensagem na UI
+            // Alternar a visualização normal se estiver na tela de sign up
+            isSignIn = !isSignIn;
         }
     }
 
-    public class LoginModel
+    private void HandleSignInSubmit()
     {
-        public string Username { get; set; }
-        public string Password { get; set; }
+        // Handle sign in submission
+        // Por exemplo, autenticar o usuário e navegar para a página principal
+        Console.WriteLine($"Login attempt: {signInModel.Email}");
+    }
+
+    private void HandleSignUpSubmit()
+    {
+        // Handle sign up submission
+        // Por exemplo, registrar o usuário e navegar para a página principal
+        Console.WriteLine($"Registration: {signUpModel.Name}, {signUpModel.Email}");
     }
 }
