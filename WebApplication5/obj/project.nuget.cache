@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "CZpbgLmzcaiGT2digeFsgKXSdR/xuq3o3itlfylZUAx3FgZYxvVubNoDRaKZ9AtfDuRrn0eWKJovc2oB5m+kLA==",
+  "dgSpecHash": "A4ml6K5NoQMqcOAXmDiW1AlNhP3tyLMdz19gOkGIgBCflat6IDyg2tQLOEZ2Ul5Y3moW8QyG7JiDpiItPIVjyw==",
   "success": true,
-  "projectFilePath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\WebApplication5\\WebApplication5.csproj",
+  "projectFilePath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\WebApplication5\\WebApplication5.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\diagu\\.nuget\\packages\\humanizer\\2.14.1\\humanizer.2.14.1.nupkg.sha512",
     "C:\\Users\\diagu\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",

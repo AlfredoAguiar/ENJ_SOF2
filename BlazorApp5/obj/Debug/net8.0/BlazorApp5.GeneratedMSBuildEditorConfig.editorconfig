@@ -13,31 +13,31 @@ build_property.EnforceExtendedAnalyzerRules =
 build_property._SupportedPlatformList = browser
 build_property.RootNamespace = BlazorApp5
 build_property.RootNamespace = BlazorApp5
-build_property.ProjectDir = C:\Users\diagu\RiderProjects\ES_2\BlazorApp5\
+build_property.ProjectDir = C:\Users\diagu\RiderProjects\ENJ_SOF2tst\BlazorApp5\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = false
 build_property.RazorLangVersion = 8.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = C:\Users\diagu\RiderProjects\ES_2\BlazorApp5
+build_property.MSBuildProjectDirectory = C:\Users\diagu\RiderProjects\ENJ_SOF2tst\BlazorApp5
 build_property._RazorSourceGeneratorDebug = 
 
-[C:/Users/diagu/RiderProjects/ES_2/BlazorApp5/App.razor]
+[C:/Users/diagu/RiderProjects/ENJ_SOF2tst/BlazorApp5/App.razor]
 build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/diagu/RiderProjects/ES_2/BlazorApp5/Layout/MainLayout.razor]
+[C:/Users/diagu/RiderProjects/ENJ_SOF2tst/BlazorApp5/Layout/MainLayout.razor]
 build_metadata.AdditionalFiles.TargetPath = TGF5b3V0XE1haW5MYXlvdXQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/diagu/RiderProjects/ES_2/BlazorApp5/Pages/Home.razor]
+[C:/Users/diagu/RiderProjects/ENJ_SOF2tst/BlazorApp5/Pages/Home.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSG9tZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/diagu/RiderProjects/ES_2/BlazorApp5/Pages/Register.razor]
+[C:/Users/diagu/RiderProjects/ENJ_SOF2tst/BlazorApp5/Pages/Register.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUmVnaXN0ZXIucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/diagu/RiderProjects/ES_2/BlazorApp5/_Imports.razor]
+[C:/Users/diagu/RiderProjects/ENJ_SOF2tst/BlazorApp5/_Imports.razor]
 build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 

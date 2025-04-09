@@ -15,7 +15,7 @@ namespace TestProject1
         public void Setup()
         {
             var options = new DbContextOptionsBuilder<Dbes2>()
-                .UseNpgsql("Host=localhost;Database=es2_test;Username=postgres;Password=es2")
+                .UseNpgsql(TestConfig.ConnectionString)
                 .Options;
 
             _context = new Dbes2(options);

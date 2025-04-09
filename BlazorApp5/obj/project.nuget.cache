@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "zwOIg2iWFhV2eFgV/6XS6HCY7t9hu2N5jg1Ya5P4CTNaANLemKxUfnqItohBIfh/CcOPZWpUWKxoHR1ZC2+/0Q==",
+  "dgSpecHash": "udrf9Ktl1isi5xKmOe+3Ep4f6tbqGj8lE+bi6mUHgaidMnn2Uebeqx0R7HAUaPa6Bc9P9bHFBAIcv1WqGP4DwQ==",
   "success": true,
-  "projectFilePath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\BlazorApp5\\BlazorApp5.csproj",
+  "projectFilePath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\BlazorApp5.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\diagu\\.nuget\\packages\\microsoft.aspnetcore.authorization\\8.0.6\\microsoft.aspnetcore.authorization.8.0.6.nupkg.sha512",
     "C:\\Users\\diagu\\.nuget\\packages\\microsoft.aspnetcore.components\\8.0.6\\microsoft.aspnetcore.components.8.0.6.nupkg.sha512",

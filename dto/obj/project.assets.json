@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj",
+      "projectUniqueName": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\dto.csproj",
       "projectName": "dto",
-      "projectPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj",
+      "projectPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\dto.csproj",
       "packagesPath": "C:\\Users\\diagu\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\obj\\",
+      "outputPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\diagu\\AppData\\Roaming\\NuGet\\NuGet.Config"

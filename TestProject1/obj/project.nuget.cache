@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "3Glg+UXqdWXfj7gx22zncIekiIMny2BCOYsRlHl/vXxQCY32rXIzm4aGrV6FC3BYkMqSvnOxMt1+mB8kmVhGmQ==",
+  "dgSpecHash": "aHvJoRL4vX0JAF7Kz2Ga0KEMqjDVKzfW1uUdEUJdiLbxm80so2IiMgJghdPd1cVeK0InnND3/bUPJlHD1J9URg==",
   "success": true,
-  "projectFilePath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\TestProject1\\TestProject1.csproj",
+  "projectFilePath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\TestProject1\\TestProject1.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\diagu\\.nuget\\packages\\castle.core\\5.1.1\\castle.core.5.1.1.nupkg.sha512",
     "C:\\Users\\diagu\\.nuget\\packages\\coverlet.collector\\6.0.0\\coverlet.collector.6.0.0.nupkg.sha512",

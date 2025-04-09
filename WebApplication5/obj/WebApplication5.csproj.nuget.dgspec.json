@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\diagu\\RiderProjects\\ES_2\\WebApplication5\\WebApplication5.csproj": {}
+    "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\WebApplication5\\WebApplication5.csproj": {}
   },
   "projects": {
-    "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj": {
+    "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\dto.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj",
+        "projectUniqueName": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\dto.csproj",
         "projectName": "dto",
-        "projectPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj",
+        "projectPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\dto.csproj",
         "packagesPath": "C:\\Users\\diagu\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\obj\\",
+        "outputPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\diagu\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -57,14 +57,14 @@
         }
       }
     },
-    "C:\\Users\\diagu\\RiderProjects\\ES_2\\WebApplication5\\WebApplication5.csproj": {
+    "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\WebApplication5\\WebApplication5.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\diagu\\RiderProjects\\ES_2\\WebApplication5\\WebApplication5.csproj",
+        "projectUniqueName": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\WebApplication5\\WebApplication5.csproj",
         "projectName": "WebApplication5",
-        "projectPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\WebApplication5\\WebApplication5.csproj",
+        "projectPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\WebApplication5\\WebApplication5.csproj",
         "packagesPath": "C:\\Users\\diagu\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\WebApplication5\\obj\\",
+        "outputPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\WebApplication5\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\diagu\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -79,8 +79,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj": {
-                "projectPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\dto\\dto.csproj"
+              "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\dto.csproj": {
+                "projectPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\dto\\dto.csproj"
               }
             }
           }
