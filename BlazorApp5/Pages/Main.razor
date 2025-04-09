@@ -1,0 +1,150 @@
+﻿@page "/main"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="navbar">
+    <a href="#" class="logo">Ativos Financeiros</a>
+    <div class="nav-links">
+        <NavLink href="/" class="nav-link">Home</NavLink>
+        <div class="dropdown" @onclick="ToggleDropdown" @onmouseleave="CloseDropdown">
+            <NavLink class="nav-link">
+                Ativos Financeiros
+                <span class="dropdown-arrow" style="@GetArrowRotation()"></span>
+            </NavLink>
+            @if (isDropdownVisible)
+            {
+                <div class="dropdown-content">
+                    <NavLink href="/renda-fixa" class="dropdown-link">Renda Fixa</NavLink>
+                    <NavLink href="/renda-variavel" class="dropdown-link">Renda Variável</NavLink>
+                    <NavLink href="/fundos-imobiliarios" class="dropdown-link">Fundos Imobiliários</NavLink>
+                </div>
+            }
+        </div>
+        <NavLink href="/services" class="nav-link">Services</NavLink>
+        <NavLink href="/contact" class="nav-link">Contact</NavLink>
+        <NavLink href="/feedback" class="nav-link">Dados Pessoais</NavLink>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 50px; padding: 20px;">
+    <h1>Conteúdo da Página</h1>
+    <p>Este é um exemplo de menu de navegação com dropdown controlado via clique.</p>
+</div>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+    }
+
+    body {
+        background-color: #f0f0f0;
+    }
+
+    .navbar {
+        background-color: #58af9b;
+        padding: 15px 0;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .logo {
+        margin-left: 120px;
+        font-size: 28px;
+        font-weight: bold;
+        color: white;
+        text-decoration: none;
+    }
+
+    .nav-links {
+        margin-right: 120px;
+        display: flex;
+        align-items: center;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .nav-link {
+        color: white;
+        text-decoration: none;
+        padding: 10px 20px;
+        margin: 0 5px;
+        font-size: 16px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        transition: background-color 0.3s;
+        display: inline-block;
+    }
+
+    .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .dropdown {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .dropdown-arrow {
+        margin-left: 5px;
+        border: solid #fff;
+        border-width: 3px 3px 0 0;
+        display: inline-block;
+        padding: 3px;
+        transform: rotate(45deg); /* Inicialmente para cima */
+        transition: transform 0.3s ease;
+    }
+
+    .dropdown-content {
+        display: block;
+        position: absolute;
+        top: 100%; /* Garante que o dropdown aparece abaixo do botão */
+        left: 0;
+        background-color: white;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        z-index: 1;
+        min-width: 200px;
+    }
+
+    .dropdown-content .dropdown-link {
+        color: #58af9b;
+        text-decoration: none;
+        padding: 10px 15px;
+        display: block;
+        font-size: 14px;
+        transition: background-color 0.3s;
+    }
+
+    .dropdown-content .dropdown-link:hover {
+        background-color: #f0f0f0;
+    }
+</style>
+
+@code {
+    private bool isDropdownVisible = false;
+
+    // Alterna a visibilidade do dropdown
+    private void ToggleDropdown()
+    {
+        isDropdownVisible = !isDropdownVisible;
+    }
+
+    // Fecha o dropdown se o mouse sair da área do dropdown
+    private void CloseDropdown()
+    {
+        isDropdownVisible = false;
+    }
+
+    // Retorna o estilo da rotação da seta com base no estado do dropdown
+    private string GetArrowRotation()
+    {
+        return isDropdownVisible ? "transform: rotate(225deg);" : "transform: rotate(45deg);";
+    }
+}
