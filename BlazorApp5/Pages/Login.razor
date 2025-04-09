@@ -1,69 +1,133 @@
 ﻿@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using WebApplication5.DTO
 @inject NavigationManager NavigationManager
+@inject HttpClient Http
 
 <div class="container">
     <div class="content first-content">
+        <!-- Coluna para direcionamento ao login caso o usuário já possua conta -->
         <div class="first-column">
-            <h2 class="title title-primary">Não tem conta?</h2>
-            <p class="description description-primary">Para continuar conectado a nós</p>
-            <p class="description description-primary">por-favor regista te com os teus dados pessoais</p>
-            <button @onclick="BackToLogin" class="btn btn-primary">sign out</button>
+            <h2 class="title title-primary">Já tem uma conta?</h2>
+            <p class="description description-primary">
+                Se já estiver registado, basta efetuar o login.
+            </p>
+            <button @onclick="BackToLogin" class="btn btn-primary">Voltar ao Login</button>
         </div>
+
+        <!-- Coluna de registro -->
         <div class="second-column">
-            <br/><br/><br/><br/><br/><br/>
-            <h2 class="title title-second">Faça o seu Login</h2>
-            <p class="description description-second">insira seu email e palavra-pass</p>
+            <h2 class="title title-second">Faça o seu Registro</h2>
+            <p class="description description-second">
+                Preencha seus dados para se registar
+            </p>
             <EditForm Model="registerModel" OnValidSubmit="HandleRegistration" class="form-container">
-                <DataAnnotationsValidator/>
-                <ValidationSummary/>
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
                 <div class="form">
+                    <!-- Campo de Email -->
                     <div class="input-group">
                         <i class="far fa-envelope icon-modify"></i>
-                        <InputText @bind-Value="registerModel.Email" placeholder="Email" class="form-input"/>
+                        <InputText @bind-Value="registerModel.Email" placeholder="Email" class="form-input" />
                     </div>
 
+                    <!-- Campo de Nome -->
+                    <div class="input-group">
+                        <i class="fas fa-user icon-modify"></i>
+                        <InputText @bind-Value="registerModel.Name" placeholder="Nome" class="form-input" />
+                    </div>
+
+                    <!-- Campo de Senha -->
                     <div class="input-group">
                         <i class="fas fa-lock icon-modify"></i>
-                        <InputText @bind-Value="registerModel.Password" type="password" placeholder="Password" class="form-input"/>
+                        <InputText @bind-Value="registerModel.Password" type="password" placeholder="Password" class="form-input" />
                     </div>
 
-                    <button type="submit" class="btn btn-second">Login</button>
+                    <!-- Campo de confirmação de Senha -->
+                    <div class="input-group">
+                        <i class="fas fa-lock icon-modify"></i>
+                        <InputText @bind-Value="registerModel.ConfirmPassword" type="password" placeholder="Confirmar Password" class="form-input" />
+                    </div>
+
+                    <button type="submit" class="btn btn-second">Registrar</button>
                 </div>
             </EditForm>
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="error" style="color: red;">@ErrorMessage</div>
+            }
         </div>
     </div>
 </div>
 
 @code {
-    private class RegisterModel
+    public class RegisterModel
     {
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Password { get; set; }
-        public string ConfirmPassword { get; set; }
+        [Required(ErrorMessage = "O nome é obrigatório.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "O email é obrigatório.")]
+        [EmailAddress(ErrorMessage = "Endereço de email inválido.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A senha é obrigatória.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A confirmação de senha é obrigatória.")]
+        [Compare("Password", ErrorMessage = "As senhas devem coincidir.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 
     private RegisterModel registerModel = new RegisterModel();
+    private string ErrorMessage = string.Empty;
 
     private void BackToLogin()
     {
-        NavigationManager.NavigateTo("/");
+        NavigationManager.NavigateTo("/login");
     }
 
-    private void HandleRegistration()
+    private async Task HandleRegistration()
     {
-        // Validar se as senhas coincidem
+       
+        ErrorMessage = "";
         if (registerModel.Password != registerModel.ConfirmPassword)
         {
-            // Adicionar lógica para mostrar erro
-            Console.WriteLine("Passwords don't match");
+            ErrorMessage = "As senhas não coincidem.";
             return;
         }
-
-        // Lógica de registro do usuário
-        Console.WriteLine($"Registering: {registerModel.Name}, {registerModel.Email}");
         
-        // Redirecionar para página principal após registro bem-sucedido
-        NavigationManager.NavigateTo("/main");
+        var newUser = new UtilizadoreDto
+        { 
+            Id=Guid.NewGuid(),
+            Nome = registerModel.Name,
+            Email = registerModel.Email,
+            Senha = registerModel.Password,
+            Cargo = "Gerente",
+            PermissaoId = Guid.Parse("8a14aeb8-aaf8-4fcd-8d8a-a5cd1e5ec0fd")
+        };
+      
+        try
+        {
+            
+            var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore", newUser);
+
+            if (response.IsSuccessStatusCode)
+            {
+          
+                NavigationManager.NavigateTo("/main");
+            }
+            else
+            {
+             
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ErrorMessage = $"Erro ao registrar usuário: {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Exceção: {ex.Message}";
+        }
     }
-} 
+}
