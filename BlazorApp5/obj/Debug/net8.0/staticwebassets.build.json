@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "Wz8vriPCrHLeVtEhYuVVJanjJJJwEZgSd7RF5W0vJHw=",
+  "Hash": "JXSK8SlFN7EsUhw4ELTfeYfTaoatiQiz5Q7SZYK/wsI=",
   "Source": "BlazorApp5",
   "BasePath": "/",
   "Mode": "Root",
@@ -7881,6 +7881,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\css\\home.css"
+    },
+    {
+      "Identity": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\wwwroot\\css\\main.css",
+      "SourceId": "BlazorApp5",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\wwwroot\\",
+      "BasePath": "/",
+      "RelativePath": "css/main.css",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\css\\main.css"
     },
     {
       "Identity": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\BlazorApp5\\wwwroot\\icon-192.png",
