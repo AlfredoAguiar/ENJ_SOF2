@@ -1,14 +1,11 @@
 ﻿@page "/main"
-@using System.Globalization
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<link href="css/main.css" rel="stylesheet" />
 <div class="navbar">
-    <a href="#" class="logo">Ativos Financeiros</a>
+    <a href="/main" class="logo">Ativos Financeiros</a>
     <div class="nav-links">
-        <NavLink href="/" class="nav-link">Home</NavLink>
+        <NavLink href="/main" class="nav-link">Home</NavLink>
         <div class="dropdown" @onclick="ToggleDropdown" @onmouseleave="CloseDropdown">
             <NavLink class="nav-link">
                 Ativos Financeiros
@@ -29,245 +26,126 @@
     </div>
 </div>
 
-<div class="content-container">
-    <div class="title-container">
-        <h1 class="page-title">Gestão de Ativos</h1>
-        <button class="add-button" @onclick="ShowAddModal">
-            <i class="fas fa-plus"></i> Adicionar Ativo
-        </button>
-    </div>
-    <br/>
-    <div class="table-container">
-        <table>
-            <thead>
-            <tr>
-                <th>ID</th>
-                <th>Ativo ID</th>
-                <th>Nome</th>
-                <th>Montante Investido</th>
-                <th>Duração (Meses)</th>
-                <th>Taxa Juros Anual</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var item in orders)
-            {
-                <tr>
-                    <td>@item.Id</td>
-                    <td>@item.AtivoId</td>
-                    <td>@item.Nome</td>
-                    <td>@item.MontanteInvestido.ToString("C", new CultureInfo("pt-PT"))</td>
-                    <td>@item.DuracaoMeses</td>
-                    <td>@item.TaxaJurosAnual.ToString("P")</td>
-                    <td>
-                        <div class="button-group">
-                            <button class="edit-button" @onclick="() => ShowEditModal(item)">Editar</button>
-                            <button class="delete-button" @onclick="() => ShowDeleteModal(item.Id)">Apagar</button>
-                        </div>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
+<div style="text-align: center; margin-top: 50px; padding: 20px;">
+    <h1>Conteúdo da Página</h1>
+    <p>Este é um exemplo de menu de navegação com dropdown controlado via clique.</p>
 </div>
 
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+    }
 
-<div class="modal @modalVisibility">
-    <div class="modal-content">
-        <span class="close-button" @onclick="HideDeleteModal">&times;</span>
-        <p>Tem certeza de que deseja apagar este ativo?</p>
-        <div class="modal-buttons">
-            <button class="confirm-button" @onclick="ConfirmDelete">Confirmar</button>
-            <button class="cancel-button" @onclick="HideDeleteModal">Cancelar</button>
-        </div>
-    </div>
-</div>
+    body {
+        background-color: #f0f0f0;
+    }
 
-<!-- Modal Structure for Adding Asset -->
-<div class="modal @addModalVisibility">
-    <div class="modal-content">
-        <span class="close-button" @onclick="HideAddModal">&times;</span>
-        <h2>Adicionar Novo Ativo</h2>
-        <br/>
-        <form @onsubmit="AddOrder">
-            <label>
-                Nome:
-                <input type="text" @bind="newOrder.Nome" required />
-            </label>
-            <label>
-                Montante Investido:
-                <input type="number" @bind="newOrder.MontanteInvestido" required />
-            </label>
-            <label>
-                Duração (Meses):
-                <input type="number" @bind="newOrder.DuracaoMeses" required />
-            </label>
-            <label>
-                Taxa Juros Anual (%):
-                <input type="number" step="0.01" @bind="newOrder.TaxaJurosAnual" required />
-            </label>
-            <div class="modal-buttons">
-                <button type="submit" class="confirm-button">Adicionar</button>
-                <button type="button" class="cancel-button" @onclick="HideAddModal">Cancelar</button>
-            </div>
-        </form>
-    </div>
-</div>
+    .navbar {
+        background-color: #58af9b;
+        padding: 15px 0;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
 
-<!-- Modal Structure for Edit Asset -->
-<div class="modal @editModalVisibility">
-    <div class="modal-content">
-        <span class="close-button" @onclick="HideEditModal">&times;</span>
-        <h2>Editar Ativo</h2>
-        <br/>
-        <form @onsubmit="SaveEdit">
-            <label>
-                Nome:
-                <input type="text" @bind="editOrder.Nome" required />
-            </label>
-            <label>
-                Montante Investido:
-                <input type="number" @bind="editOrder.MontanteInvestido" required />
-            </label>
-            <label>
-                Duração (Meses):
-                <input type="number" @bind="editOrder.DuracaoMeses" required />
-            </label>
-            <label>
-                Taxa Juros Anual (%):
-                <input type="number" step="0.01" @bind="editOrder.TaxaJurosAnual" required />
-            </label>
-            <div class="modal-buttons">
-                <button type="submit" class="confirm-button">Salvar</button>
-                <button type="button" class="cancel-button" @onclick="HideEditModal">Cancelar</button>
-            </div>
-        </form>
-    </div>
-</div>
+    .logo {
+        margin-left: 120px;
+        font-size: 28px;
+        font-weight: bold;
+        color: white;
+        text-decoration: none;
+    }
 
+    .nav-links {
+        margin-right: 120px;
+        display: flex;
+        align-items: center;
+        position: relative;
+        cursor: pointer;
+    }
 
+    .nav-link {
+        color: white;
+        text-decoration: none;
+        padding: 10px 20px;
+        margin: 0 5px;
+        font-size: 16px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        transition: background-color 0.3s;
+        display: inline-block;
+    }
+
+    .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .dropdown {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .dropdown-arrow {
+        margin-left: 5px;
+        border: solid #fff;
+        border-width: 3px 3px 0 0;
+        display: inline-block;
+        padding: 3px;
+        transform: rotate(45deg); /* Inicialmente para cima */
+        transition: transform 0.3s ease;
+    }
+
+    .dropdown-content {
+        display: block;
+        position: absolute;
+        top: 100%; /* Garante que o dropdown aparece abaixo do botão */
+        left: 0;
+        background-color: white;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        z-index: 1;
+        min-width: 200px;
+    }
+
+    .dropdown-content .dropdown-link {
+        color: #58af9b;
+        text-decoration: none;
+        padding: 10px 15px;
+        display: block;
+        font-size: 14px;
+        transition: background-color 0.3s;
+    }
+
+    .dropdown-content .dropdown-link:hover {
+        background-color: #f0f0f0;
+    }
+</style>
 
 @code {
     private bool isDropdownVisible = false;
-    private bool isModalVisible = false;
-    private bool isAddModalVisible = false;
-    private bool isEditModalVisible = false;
-    private int itemToDeleteId = -1;
 
-    private List<Order> orders = new List<Order>
-    {
-        new Order { Id = 1, AtivoId = 101, Nome = "Ativo A", MontanteInvestido = 1000.00m, DuracaoMeses = 12, TaxaJurosAnual = 0.05m },
-        new Order { Id = 2, AtivoId = 102, Nome = "Ativo B", MontanteInvestido = 1500.00m, DuracaoMeses = 24, TaxaJurosAnual = 0.04m },
-        new Order { Id = 3, AtivoId = 103, Nome = "Ativo C", MontanteInvestido = 2000.00m, DuracaoMeses = 36, TaxaJurosAnual = 0.03m },
-        new Order { Id = 4, AtivoId = 104, Nome = "Ativo D", MontanteInvestido = 2500.00m, DuracaoMeses = 48, TaxaJurosAnual = 0.06m },
-        new Order { Id = 5, AtivoId = 105, Nome = "Ativo E", MontanteInvestido = 3000.00m, DuracaoMeses = 60, TaxaJurosAnual = 0.07m },
-        new Order { Id = 6, AtivoId = 106, Nome = "Ativo F", MontanteInvestido = 3500.00m, DuracaoMeses = 72, TaxaJurosAnual = 0.08m },
-        new Order { Id = 7, AtivoId = 107, Nome = "Ativo G", MontanteInvestido = 4000.00m, DuracaoMeses = 84, TaxaJurosAnual = 0.09m }
-    };
-
-    private Order newOrder = new Order();
-    private Order editOrder = new Order();
-
+    // Alterna a visibilidade do dropdown
     private void ToggleDropdown()
     {
         isDropdownVisible = !isDropdownVisible;
     }
 
+    // Fecha o dropdown se o mouse sair da área do dropdown
     private void CloseDropdown()
     {
         isDropdownVisible = false;
     }
 
+    // Retorna o estilo da rotação da seta com base no estado do dropdown
     private string GetArrowRotation()
     {
         return isDropdownVisible ? "transform: rotate(225deg);" : "transform: rotate(45deg);";
     }
-
-    private void ShowDeleteModal(int id)
-    {
-        itemToDeleteId = id;
-        isModalVisible = true;
-    }
-
-    private void HideDeleteModal()
-    {
-        itemToDeleteId = -1;
-        isModalVisible = false;
-    }
-
-    private void ConfirmDelete()
-    {
-        // Simula a exclusão sem remover o item da lista
-        HideDeleteModal();
-    }
-
-    private void ShowAddModal()
-    {
-        isAddModalVisible = true;
-        newOrder = new Order(); // Reset new order fields
-    }
-
-    private void HideAddModal()
-    {
-        isAddModalVisible = false;
-    }
-
-    private void AddOrder()
-    {
-        if (!string.IsNullOrEmpty(newOrder.Nome) && newOrder.MontanteInvestido > 0 && newOrder.DuracaoMeses > 0)
-        {
-            newOrder.Id = orders.Count + 1; // Assign a new ID
-            newOrder.AtivoId = 100 + newOrder.Id; // Assign a new AtivoId
-            orders.Add(newOrder);
-            HideAddModal();
-        }
-    }
-
-    private void ShowEditModal(Order order)
-    {
-        editOrder = new Order
-        {
-            Id = order.Id,
-            AtivoId = order.AtivoId,
-            Nome = order.Nome,
-            MontanteInvestido = order.MontanteInvestido,
-            DuracaoMeses = order.DuracaoMeses,
-            TaxaJurosAnual = order.TaxaJurosAnual
-        };
-        isEditModalVisible = true;
-    }
-
-    private void HideEditModal()
-    {
-        isEditModalVisible = false;
-    }
-
-    private void SaveEdit()
-    {
-        var order = orders.FirstOrDefault(o => o.Id == editOrder.Id);
-        if (order != null)
-        {
-            order.Nome = editOrder.Nome;
-            order.MontanteInvestido = editOrder.MontanteInvestido;
-            order.DuracaoMeses = editOrder.DuracaoMeses;
-            order.TaxaJurosAnual = editOrder.TaxaJurosAnual;
-        }
-        HideEditModal();
-    }
-
-    private string modalVisibility => isModalVisible ? "visible" : "";
-    private string addModalVisibility => isAddModalVisible ? "visible" : "";
-    private string editModalVisibility => isEditModalVisible ? "visible" : "";
-
-    private class Order
-    {
-        public int Id { get; set; }
-        public int AtivoId { get; set; }
-        public string Nome { get; set; }
-        public decimal MontanteInvestido { get; set; }
-        public int DuracaoMeses { get; set; }
-        public decimal TaxaJurosAnual { get; set; }
-    }
+}
 }

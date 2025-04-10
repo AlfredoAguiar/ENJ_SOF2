@@ -12,42 +12,43 @@
             <p class="description description-primary">
                 Se já estiver registado, basta efetuar o login.
             </p>
-            <button @onclick="BackToLogin" class="btn btn-primary">Voltar ao Login</button>
+            <button @onclick="BackToLogin" class="btn btn-primary">Login</button>
         </div>
-
+        <br/><br/>
         <!-- Coluna de registro -->
         <div class="second-column">
+            <br/><br/>  
             <h2 class="title title-second">Faça o seu Registro</h2>
             <p class="description description-second">
                 Preencha seus dados para se registar
             </p>
             <EditForm Model="registerModel" OnValidSubmit="HandleRegistration" class="form-container">
-                <DataAnnotationsValidator />
-                <ValidationSummary />
+                <DataAnnotationsValidator/>
+                <ValidationSummary/>
 
                 <div class="form">
                     <!-- Campo de Email -->
                     <div class="input-group">
                         <i class="far fa-envelope icon-modify"></i>
-                        <InputText @bind-Value="registerModel.Email" placeholder="Email" class="form-input" />
+                        <InputText @bind-Value="registerModel.Email" placeholder="Email" class="form-input"/>
                     </div>
 
                     <!-- Campo de Nome -->
                     <div class="input-group">
                         <i class="fas fa-user icon-modify"></i>
-                        <InputText @bind-Value="registerModel.Name" placeholder="Nome" class="form-input" />
+                        <InputText @bind-Value="registerModel.Name" placeholder="Nome" class="form-input"/>
                     </div>
 
                     <!-- Campo de Senha -->
                     <div class="input-group">
                         <i class="fas fa-lock icon-modify"></i>
-                        <InputText @bind-Value="registerModel.Password" type="password" placeholder="Password" class="form-input" />
+                        <InputText @bind-Value="registerModel.Password" type="password" placeholder="Password" class="form-input"/>
                     </div>
 
                     <!-- Campo de confirmação de Senha -->
                     <div class="input-group">
                         <i class="fas fa-lock icon-modify"></i>
-                        <InputText @bind-Value="registerModel.ConfirmPassword" type="password" placeholder="Confirmar Password" class="form-input" />
+                        <InputText @bind-Value="registerModel.ConfirmPassword" type="password" placeholder="Confirmar Password" class="form-input"/>
                     </div>
 
                     <button type="submit" class="btn btn-second">Registrar</button>
@@ -85,7 +86,7 @@
 
     private void BackToLogin()
     {
-        NavigationManager.NavigateTo("/login");
+        NavigationManager.NavigateTo("/");
     }
 
     private async Task HandleRegistration()

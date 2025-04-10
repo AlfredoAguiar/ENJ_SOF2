@@ -6,10 +6,10 @@
         <div class="first-column">
             @if (isSignIn)
             {
-                <h2 class="title title-primary">Bem-vindo de volta!</h2>
+                <h2 class="title title-primary">Bem-vindo!</h2>
                 <p class="description description-primary">Para continuar conectado a nós</p>
-                <p class="description description-primary">por-favor faz login com os teus dados pessoais</p>
-                <button @onclick="ToggleView" class="btn btn-primary">sign in</button>
+                <p class="description description-primary">por-favor faz o registo com os teus dados pessoais</p>
+                <button @onclick="ToggleView" class="btn btn-primary">Registar</button>
             }
             else
             {
@@ -23,17 +23,12 @@
             <br/><br/><br/><br/>
             @if (isSignIn)
             {
-                <h2 class="title title-second">Cria uma conta</h2>
+                <h2 class="title title-second">Faça o seu Login</h2>
                 <p class="description description-second">Insiria os seus dados</p>
                 <EditForm Model="signUpModel" OnValidSubmit="HandleSignUpSubmit" class="form-container">
                     <DataAnnotationsValidator/>
                     <ValidationSummary/>
                     <div class="form">
-                        <div class="input-group">
-                            <i class="far fa-user icon-modify"></i>
-                            <InputText @bind-Value="signUpModel.Name" placeholder="Name" class="form-input"/>
-                        </div>
-
                         <div class="input-group">
                             <i class="far fa-envelope icon-modify"></i>
                             <InputText @bind-Value="signUpModel.Email" placeholder="Email" class="form-input"/>
