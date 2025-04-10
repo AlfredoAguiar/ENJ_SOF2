@@ -1,5 +1,7 @@
 ﻿@page "/"
+@using WebApplication5.DTO
 @inject NavigationManager NavigationManager
+@inject HttpClient Http
 
 <div class="container">
     <div class="content @(isSignIn ? "first-content" : "second-content")">
@@ -8,68 +10,68 @@
             {
                 <h2 class="title title-primary">Bem-vindo!</h2>
                 <p class="description description-primary">Para continuar conectado a nós</p>
-                <p class="description description-primary">por-favor faz o registo com os teus dados pessoais</p>
+                <p class="description description-primary">por favor faça o registo com os teus dados pessoais</p>
                 <button @onclick="ToggleView" class="btn btn-primary">Registar</button>
             }
             else
             {
-                <h2 class="title title-primary">hello, friend!</h2>
-                <p class="description description-primary">Enter your personal details</p>
-                <p class="description description-primary">and start journey with us</p>
-                <button @onclick="ToggleView" class="btn btn-primary">sign up</button>
+                <h2 class="title title-primary">Olá, amigo!</h2>
+                <p class="description description-primary">Já tens conta? Então faz login!</p>
+                <button @onclick="ToggleView" class="btn btn-primary">Login</button>
             }
         </div>
+
         <div class="second-column">
-            <br/><br/><br/><br/>
+            <br /><br /><br /><br />
+
             @if (isSignIn)
             {
-                <h2 class="title title-second">Faça o seu Login</h2>
-                <p class="description description-second">Insiria os seus dados</p>
-                <EditForm Model="signUpModel" OnValidSubmit="HandleSignUpSubmit" class="form-container">
-                    <DataAnnotationsValidator/>
-                    <ValidationSummary/>
+                <h2 class="title title-second">Login</h2>
+                <p class="description description-second">Use seus dados para entrar:</p>
+
+                <EditForm Model="signInModel" OnValidSubmit="HandleSignInSubmit" class="form-container">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
                     <div class="form">
                         <div class="input-group">
                             <i class="far fa-envelope icon-modify"></i>
-                            <InputText @bind-Value="signUpModel.Email" placeholder="Email" class="form-input"/>
+                            <InputText @bind-Value="signInModel.Email" placeholder="Email" class="form-input" />
                         </div>
 
                         <div class="input-group">
                             <i class="fas fa-lock icon-modify"></i>
-                            <InputText @bind-Value="signUpModel.Password" type="password" placeholder="Password" class="form-input"/>
+                            <InputText @bind-Value="signInModel.Password" type="password" placeholder="Password" class="form-input" />
                         </div>
 
-                        <button type="submit" class="btn btn-second">sign up</button>
+                        @if (!string.IsNullOrEmpty(loginErrorMessage))
+                        {
+                            <div style="color:red">@loginErrorMessage</div>
+                        }
+
+                        <button type="submit" class="btn btn-second">Login</button>
                     </div>
                 </EditForm>
             }
             else
             {
-                <h2 class="title title-second">sign in to developer</h2>
-                <div class="social-media">
-                    <ul class="list-social-media">
-                        <li class="item-social-media"><i class="fab fa-facebook-f"></i></li>
-                        <li class="item-social-media"><i class="fab fa-google-plus-g"></i></li>
-                        <li class="item-social-media"><i class="fab fa-linkedin-in"></i></li>
-                    </ul>
-                </div>
-                <p class="description description-second">or use your email account:</p>
-                <EditForm Model="signInModel" OnValidSubmit="HandleSignInSubmit" class="form-container">
-                    <DataAnnotationsValidator/>
-                    <ValidationSummary/>
+                <h2 class="title title-second">Registar Conta</h2>
+                <p class="description description-second">Preencha os dados abaixo:</p>
+
+                <EditForm Model="signUpModel" OnValidSubmit="HandleSignUpSubmit" class="form-container">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
                     <div class="form">
                         <div class="input-group">
                             <i class="far fa-envelope icon-modify"></i>
-                            <InputText @bind-Value="signInModel.Email" placeholder="Email" class="form-input"/>
+                            <InputText @bind-Value="signUpModel.Email" placeholder="Email" class="form-input" />
                         </div>
 
                         <div class="input-group">
                             <i class="fas fa-lock icon-modify"></i>
-                            <InputText @bind-Value="signInModel.Password" type="password" placeholder="Password" class="form-input"/>
+                            <InputText @bind-Value="signUpModel.Password" type="password" placeholder="Password" class="form-input" />
                         </div>
 
-                        <a class="password" href="#">forgot your password?</a>
-                        <button type="submit" class="btn btn-second">sign in</button>
+                        <button type="submit" class="btn btn-second">Sign Up</button>
                     </div>
                 </EditForm>
             }
@@ -82,7 +84,6 @@
 
     private class SignUpModel
     {
-        public string Name { get; set; }
         public string Email { get; set; }
         public string Password { get; set; }
     }
@@ -95,33 +96,56 @@
 
     private SignUpModel signUpModel = new SignUpModel();
     private SignInModel signInModel = new SignInModel();
+    private string loginErrorMessage = string.Empty;
 
     private void ToggleView()
     {
-        // Se estiver na tela de sign in (criar conta) e clicar no botão,
-        // navega para a página de registro
-        if (isSignIn)
-        {
-            NavigationManager.NavigateTo("login");
-        }
-        else
-        {
-            // Alternar a visualização normal se estiver na tela de sign up
-            isSignIn = !isSignIn;
-        }
-    }
-
-    private void HandleSignInSubmit()
-    {
-        // Handle sign in submission
-        // Por exemplo, autenticar o usuário e navegar para a página principal
-        Console.WriteLine($"Login attempt: {signInModel.Email}");
+        isSignIn = !isSignIn;
     }
 
     private void HandleSignUpSubmit()
     {
-        // Handle sign up submission
-        // Por exemplo, registrar o usuário e navegar para a página principal
-        Console.WriteLine($"Registration: {signUpModel.Name}, {signUpModel.Email}");
+        Console.WriteLine($"Registration: {signUpModel.Email}");
     }
+
+    private async Task HandleSignInSubmit()
+    {
+        loginErrorMessage = string.Empty;
+
+        try
+        {
+            var email = Uri.EscapeDataString(signInModel.Email);
+            var password = Uri.EscapeDataString(signInModel.Password);
+            var url = $"http://localhost:5189/api/Utilizadore";
+
+            var response = await Http.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+
+                var users = await response.Content.ReadFromJsonAsync<List<UtilizadoreDto>>();
+                
+                var user = users?.FirstOrDefault(u =>
+                    u.Email == signInModel.Email && u.Senha == signInModel.Password);
+
+                if (user != null)
+                {
+                    NavigationManager.NavigateTo("/main");
+                }
+                else
+                {
+                    loginErrorMessage = "Email ou senha incorretos.";
+                }
+            }
+            else
+            {
+                loginErrorMessage = "Erro na requisição.";
+            }
+        }
+        catch (Exception ex)
+        {
+            loginErrorMessage = $"Erro: {ex.Message}";
+        }
+    }
+
 }
