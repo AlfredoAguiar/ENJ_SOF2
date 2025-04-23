@@ -123,7 +123,7 @@
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Erro ao registrar usuário: {errorContent}";
+                ErrorMessage = $"Erro ao registrar usuário:";
             }
         }
         catch (Exception ex)
