@@ -1,7 +1,7 @@
 ﻿@page "/main"
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
-
+@inject NavigationManager Navigation
 <div class="navbar">
     <a href="/main" class="logo">Ativos Financeiros</a>
     <div class="nav-links">
@@ -21,8 +21,8 @@
             }
         </div>
         <NavLink href="/services" class="nav-link">Services</NavLink>
-        <NavLink href="/contact" class="nav-link">Contact</NavLink>
-        <NavLink href="/feedback" class="nav-link">Dados Pessoais</NavLink>
+        <NavLink href="/dados" class="nav-link">Dados Pessoais</NavLink>
+        <NavLink href="/" class="nav-link sair-button" @onclick="Logout">Sair</NavLink>
     </div>
 </div>
 
@@ -125,27 +125,44 @@
     .dropdown-content .dropdown-link:hover {
         background-color: #f0f0f0;
     }
+    .nav-link.sair-button {
+        background-color: red; /* Red background */
+        color: white; /* White text color */
+        padding: 10px 20px;
+        border-radius: 3px;
+        transition: background-color 0.3s;
+    }
+
+    .nav-link.sair-button:hover {
+        background-color: darkred; /* Darker red on hover */
+    }
 </style>
 
 @code {
     private bool isDropdownVisible = false;
 
-    // Alterna a visibilidade do dropdown
+
     private void ToggleDropdown()
     {
         isDropdownVisible = !isDropdownVisible;
     }
 
-    // Fecha o dropdown se o mouse sair da área do dropdown
+
     private void CloseDropdown()
     {
         isDropdownVisible = false;
     }
 
-    // Retorna o estilo da rotação da seta com base no estado do dropdown
+
     private string GetArrowRotation()
     {
         return isDropdownVisible ? "transform: rotate(225deg);" : "transform: rotate(45deg);";
+    }
+    private void Logout()
+    {
+        // Logic for logging out (if needed)
+        // Redirect to the homepage
+        Navigation.NavigateTo("http://localhost:5228");
     }
 }
 }

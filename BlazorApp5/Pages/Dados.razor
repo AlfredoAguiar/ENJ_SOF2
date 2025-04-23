@@ -1,0 +1,177 @@
+﻿@page "/dados"
+@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject UserStateService UserStateService
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link href="css/main.css" rel="stylesheet" />
+
+<div class="navbar">
+    <a href="/main" class="logo">Ativos Financeiros</a>
+    <div class="nav-links">
+        <NavLink href="/main" class="nav-link">Home</NavLink>
+        <div class="dropdown" @onclick="ToggleDropdown" @onmouseleave="CloseDropdown">
+            <NavLink class="nav-link">
+                Ativos Financeiros
+                <span class="dropdown-arrow" style="@GetArrowRotation()"></span>
+            </NavLink>
+            @if (isDropdownVisible)
+            {
+                <div class="dropdown-content">
+                    <NavLink href="/ativo" class="dropdown-link">Renda Fixa</NavLink>
+                    <NavLink href="/ativo" class="dropdown-link">Renda Variável</NavLink>
+                    <NavLink href="/ativo" class="dropdown-link">Fundos Imobiliários</NavLink>
+                </div>
+            }
+        </div>
+        <NavLink href="/services" class="nav-link">Services</NavLink>
+        <NavLink href="/dados" class="nav-link">Dados Pessoais</NavLink>
+        <NavLink href="/" class="nav-link sair-button" @onclick="Logout">Sair</NavLink>
+    </div>
+</div>
+
+<div class="content-container">
+    <div class="title-container">
+        <h1 class="page-title">Gestão de Dados Pessoais</h1>
+    </div>
+
+    @if (user != null)
+    {
+        <EditForm Model="user" OnValidSubmit="HandleSaveChanges">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="form-group">
+                <label for="nome">Nome</label>
+                <InputText id="nome" @bind-Value="user.Nome" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <InputText id="email" @bind-Value="user.Email" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <InputText id="senha" @bind-Value="user.Senha" type="password" class="form-control" />
+            </div>
+
+            @if (user.Cargo.ToLower() == "admin")
+            {
+                <div class="form-group">
+                    <label for="cargo">Cargo</label>
+                    <InputText id="cargo" @bind-Value="user.Cargo" class="form-control" />
+                </div>
+            }
+            else
+            {
+                <div class="form-group">
+                    <label for="cargo">Cargo</label>
+                    <InputText id="cargo" @bind-Value="user.Cargo" class="form-control" disabled />
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary" style="background-color: #4CAF50; border-color: #4CAF50;">Salvar Alterações</button>
+        </EditForm>
+    }
+    else
+    {
+        <p>Carregando dados do usuário...</p>
+    }
+
+    @if (errorMessage != null)
+    {
+        <div class="toast" role="alert">
+            @errorMessage
+        </div>
+    }
+</div>
+
+@code {
+    private UserDto user = null;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Use the UserId from the UserStateService to load the user data
+        var userId = UserStateService.UserId.ToString();
+        await LoadUserData(userId);
+    }
+
+    private bool isDropdownVisible = false;
+
+    private void ToggleDropdown()
+    {
+        isDropdownVisible = !isDropdownVisible;
+    }
+
+    private void CloseDropdown()
+    {
+        isDropdownVisible = false;
+    }
+
+    private string GetArrowRotation()
+    {
+        return isDropdownVisible ? "transform: rotate(225deg);" : "transform: rotate(45deg);";
+    }
+
+    private void Logout()
+    {
+        Navigation.NavigateTo("http://localhost:5228");
+    }
+
+    public class UserDto
+    {
+        public Guid Id { get; set; }
+        public string Nome { get; set; }
+        public string Email { get; set; }
+        public string Senha { get; set; }
+        public string Cargo { get; set; }
+    }
+
+    private async Task LoadUserData(string userId)
+    {
+        try
+        {
+            var url = $"http://localhost:5189/api/Utilizadore/{userId}";
+            var response = await Http.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                user = await response.Content.ReadFromJsonAsync<UserDto>();
+            }
+            else
+            {
+                errorMessage = "Erro ao carregar os dados do usuário.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSaveChanges()
+    {
+        try
+        {
+            var url = $"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}";
+            var response = await Http.PutAsJsonAsync(url, user);
+
+            if (response.IsSuccessStatusCode)
+            {
+                errorMessage = "Dados atualizados com sucesso.";
+            }
+            else
+            {
+                errorMessage = "Erro ao atualizar os dados.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro: {ex.Message}";
+        }
+    }
+}

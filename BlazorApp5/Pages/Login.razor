@@ -6,7 +6,7 @@
 
 <div class="container">
     <div class="content first-content">
-        <!-- Coluna para direcionamento ao login caso o usuário já possua conta -->
+        <!-- Coluna para direcionamento ao login -->
         <div class="first-column">
             <h2 class="title title-primary">Já tem uma conta?</h2>
             <p class="description description-primary">
@@ -14,41 +14,36 @@
             </p>
             <button @onclick="BackToLogin" class="btn btn-primary">Login</button>
         </div>
-        <br/><br/>
+
         <!-- Coluna de registro -->
         <div class="second-column">
-            <br/><br/>  
             <h2 class="title title-second">Faça o seu Registro</h2>
             <p class="description description-second">
                 Preencha seus dados para se registar
             </p>
             <EditForm Model="registerModel" OnValidSubmit="HandleRegistration" class="form-container">
-                <DataAnnotationsValidator/>
-                <ValidationSummary/>
+                <DataAnnotationsValidator />
+                <ValidationSummary />
 
                 <div class="form">
-                    <!-- Campo de Email -->
                     <div class="input-group">
                         <i class="far fa-envelope icon-modify"></i>
-                        <InputText @bind-Value="registerModel.Email" placeholder="Email" class="form-input"/>
+                        <InputText @bind-Value="registerModel.Email" placeholder="Email" class="form-input" />
                     </div>
 
-                    <!-- Campo de Nome -->
                     <div class="input-group">
                         <i class="fas fa-user icon-modify"></i>
-                        <InputText @bind-Value="registerModel.Name" placeholder="Nome" class="form-input"/>
+                        <InputText @bind-Value="registerModel.Name" placeholder="Nome" class="form-input" />
                     </div>
 
-                    <!-- Campo de Senha -->
                     <div class="input-group">
                         <i class="fas fa-lock icon-modify"></i>
-                        <InputText @bind-Value="registerModel.Password" type="password" placeholder="Password" class="form-input"/>
+                        <InputText @bind-Value="registerModel.Password" type="password" placeholder="Password" class="form-input" />
                     </div>
 
-                    <!-- Campo de confirmação de Senha -->
                     <div class="input-group">
                         <i class="fas fa-lock icon-modify"></i>
-                        <InputText @bind-Value="registerModel.ConfirmPassword" type="password" placeholder="Confirmar Password" class="form-input"/>
+                        <InputText @bind-Value="registerModel.ConfirmPassword" type="password" placeholder="Confirmar Password" class="form-input" />
                     </div>
 
                     <button type="submit" class="btn btn-second">Registrar</button>
@@ -58,6 +53,11 @@
             @if (!string.IsNullOrEmpty(ErrorMessage))
             {
                 <div class="error" style="color: red;">@ErrorMessage</div>
+            }
+
+            @if (ShowSuccessPopup)
+            {
+                <div class="toast toast-success">Registro realizado com sucesso!</div>
             }
         </div>
     </div>
@@ -83,6 +83,7 @@
 
     private RegisterModel registerModel = new RegisterModel();
     private string ErrorMessage = string.Empty;
+    private bool ShowSuccessPopup = false;
 
     private void BackToLogin()
     {
@@ -91,37 +92,36 @@
 
     private async Task HandleRegistration()
     {
-       
         ErrorMessage = "";
         if (registerModel.Password != registerModel.ConfirmPassword)
         {
             ErrorMessage = "As senhas não coincidem.";
             return;
         }
-        
+
         var newUser = new UtilizadoreDto
-        { 
-            Id=Guid.NewGuid(),
+        {
+            Id = Guid.NewGuid(),
             Nome = registerModel.Name,
             Email = registerModel.Email,
             Senha = registerModel.Password,
             Cargo = "Utilizador",
-            PermissaoId = Guid.Parse("8a14aeb8-aaf8-4fcd-8d8a-a5cd1e5ec0fd")  
+            PermissaoId = Guid.Parse("8a14aeb8-aaf8-4fcd-8d8a-a5cd1e5ec0fd")
         };
-      
+
         try
         {
-            
             var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore", newUser);
 
             if (response.IsSuccessStatusCode)
             {
-          
+                ShowSuccessPopup = true;
+                StateHasChanged();
+                await Task.Delay(3000);
                 NavigationManager.NavigateTo("/main");
             }
             else
             {
-             
                 var errorContent = await response.Content.ReadAsStringAsync();
                 ErrorMessage = $"Erro ao registrar usuário: {errorContent}";
             }

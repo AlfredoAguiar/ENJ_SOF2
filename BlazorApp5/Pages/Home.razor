@@ -1,8 +1,9 @@
 ﻿@page "/"
+@using System.ComponentModel.DataAnnotations
 @using WebApplication5.DTO
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
-
+@inject UserStateService UserStateService
 <div class="container">
     <div class="content @(isSignIn ? "first-content" : "second-content")">
         <div class="first-column">
@@ -11,7 +12,7 @@
                 <h2 class="title title-primary">Bem-vindo!</h2>
                 <p class="description description-primary">Para continuar conectado a nós</p>
                 <p class="description description-primary">por favor faça o registo com os teus dados pessoais</p>
-                <button @onclick="ToggleView" class="btn btn-primary">Registar</button>
+                <button @onclick="Register" class="btn btn-primary">Registar</button>
             }
             else
             {
@@ -73,25 +74,39 @@
 
                         <button type="submit" class="btn btn-second">Sign Up</button>
                     </div>
+                    
                 </EditForm>
+              
+            }
+            @if (ShowLoginSuccessPopup)
+            {
+            <div class="toast toast-success">Login realizado com sucesso!</div>
             }
         </div>
+      
     </div>
 </div>
 
 @code {
+    private bool ShowLoginSuccessPopup = false;
     private bool isSignIn = true;
 
     private class SignUpModel
     {
+        [Required(ErrorMessage = "Email é obrigatório.")]
+        [EmailAddress(ErrorMessage = "Formato de email inválido.")]
         public string Email { get; set; }
+
+        [Required(ErrorMessage = "Senha é obrigatória.")]
+        [MinLength(6, ErrorMessage = "A senha deve ter pelo menos 6 caracteres.")]
         public string Password { get; set; }
     }
 
     private class SignInModel
     {
-        public string Email { get; set; }
-        public string Password { get; set; }
+        [Required] public string Email { get; set; }
+
+        [Required] public string Password { get; set; }
     }
 
     private SignUpModel signUpModel = new SignUpModel();
@@ -102,12 +117,20 @@
     {
         isSignIn = !isSignIn;
     }
+    
+    private void Register()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+    
 
     private void HandleSignUpSubmit()
     {
         Console.WriteLine($"Registration: {signUpModel.Email}");
     }
 
+    
     private async Task HandleSignInSubmit()
     {
         loginErrorMessage = string.Empty;
@@ -122,14 +145,18 @@
 
             if (response.IsSuccessStatusCode)
             {
-
                 var users = await response.Content.ReadFromJsonAsync<List<UtilizadoreDto>>();
-                
                 var user = users?.FirstOrDefault(u =>
                     u.Email == signInModel.Email && u.Senha == signInModel.Password);
 
                 if (user != null)
                 {
+                    UserStateService.UserId = user.Id;
+
+                    ShowLoginSuccessPopup = true;
+                    StateHasChanged();
+                    await Task.Delay(3000);
+                
                     NavigationManager.NavigateTo("/main");
                 }
                 else
@@ -147,5 +174,6 @@
             loginErrorMessage = $"Erro: {ex.Message}";
         }
     }
+
 
 }
