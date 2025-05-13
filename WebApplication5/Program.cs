@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Models;
 
@@ -6,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<Dbes2>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Host=localhost;Database=es2;Username=postgres;Password=es2")));
 
-
+builder.Services.AddScoped<IPasswordHasher<Utilizadore>, PasswordHasher<Utilizadore>>();
 builder.Services.AddControllers();
 
 

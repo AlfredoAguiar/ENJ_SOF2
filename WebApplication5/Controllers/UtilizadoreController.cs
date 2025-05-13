@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.Data;
 using WebApplication1.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,12 +12,13 @@ namespace WebApplication1.Controllers
     public class UtilizadoreController : ControllerBase
     {
         private readonly Dbes2 _context;
-
-        public UtilizadoreController(Dbes2 context)
+        private readonly IPasswordHasher<Utilizadore> _passwordHasher;
+ 
+        public UtilizadoreController(Dbes2 context, IPasswordHasher<Utilizadore> passwordHasher)
         {
             _context = context;
+            _passwordHasher = passwordHasher;
         }
-
         // GET: api/Utilizadore
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UtilizadoreDto>>> GetUtilizadores()
@@ -27,7 +30,6 @@ namespace WebApplication1.Controllers
                 Id = u.Id,
                 Nome = u.Nome,
                 Email = u.Email,
-                Senha = u.Senha,
                 Cargo = u.Cargo,
                 PermissaoId = u.PermissaoId
             }).ToList();
@@ -52,7 +54,6 @@ namespace WebApplication1.Controllers
                 Id = utilizadore.Id,
                 Nome = utilizadore.Nome,
                 Email = utilizadore.Email,
-                Senha = utilizadore.Senha,
                 Cargo = utilizadore.Cargo,
                 PermissaoId = utilizadore.PermissaoId
             };
@@ -60,36 +61,47 @@ namespace WebApplication1.Controllers
             return utilizadoreDto;
         }
 
-        // PUT: api/Utilizadore/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUtilizadore(Guid id, UtilizadoreDto utilizadoreDto)
         {
             if (id != utilizadoreDto.Id)
             {
-                return BadRequest();
+                return BadRequest("IDs não coincidem.");
             }
-            
-            var utilizadore = new Utilizadore
-            {
-                Id = utilizadoreDto.Id,
-                Nome = utilizadoreDto.Nome,
-                Email = utilizadoreDto.Email,
-                Senha = utilizadoreDto.Senha,
-                Cargo = utilizadoreDto.Cargo,
-                PermissaoId = utilizadoreDto.PermissaoId 
-            };
 
+            // Buscando o usuário no banco de dados
+            var utilizadore = await _context.Utilizadores.FindAsync(id);
+            if (utilizadore == null)
+            {
+                return NotFound("Usuário não encontrado.");
+            }
+
+            // Atualizando as propriedades
+            utilizadore.Nome = utilizadoreDto.Nome;
+            utilizadore.Email = utilizadoreDto.Email;
+            utilizadore.Cargo = utilizadoreDto.Cargo;
+            utilizadore.PermissaoId = utilizadoreDto.PermissaoId;
+
+            // Atualiza a senha se ela for fornecida
+            if (!string.IsNullOrEmpty(utilizadoreDto.Senha))
+            {
+                utilizadore.Senha = _passwordHasher.HashPassword(utilizadore, utilizadoreDto.Senha);
+            }
+
+            // Marcando a entidade como modificada (opcional, pois já estamos trabalhando com a entidade existente)
             _context.Entry(utilizadore).State = EntityState.Modified;
 
             try
             {
+                // Salvando as mudanças no banco de dados
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
+                // Verifica se a entidade ainda existe
                 if (!UtilizadoreExists(id))
                 {
-                    return NotFound();
+                    return NotFound("Usuário não encontrado.");
                 }
                 else
                 {
@@ -97,8 +109,9 @@ namespace WebApplication1.Controllers
                 }
             }
 
-            return NoContent();
+            return NoContent(); // Retorna sucesso sem conteúdo
         }
+
 
         // POST: api/Utilizadore
         [HttpPost]
@@ -114,7 +127,7 @@ namespace WebApplication1.Controllers
                 Cargo = utilizadoreDto.Cargo,
                 PermissaoId = utilizadoreDto.PermissaoId 
             };
-
+            utilizadore.Senha = _passwordHasher.HashPassword(utilizadore, utilizadoreDto.Senha);
             _context.Utilizadores.Add(utilizadore);
             await _context.SaveChangesAsync();
             
@@ -151,6 +164,34 @@ namespace WebApplication1.Controllers
         {
             return _context.Utilizadores.Any(e => e.Id == id);
         }
+    
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] WebApplication5.DTO.LoginRequest request)
+        {
+            var user = await _context.Utilizadores.FirstOrDefaultAsync(u => u.Email == request.Email);
+
+            if (user == null)
+            {
+                return Unauthorized("Email ou senha inválidos.");
+            }
+
+            var result = _passwordHasher.VerifyHashedPassword(user, user.Senha, request.Password);
+            if (result == PasswordVerificationResult.Failed)
+            {
+                return Unauthorized("Email ou senha inválidos.");
+            }
+
+            var response = new LoginResponse
+            {
+                Id = user.Id,
+                Email = user.Email,
+                Name = user.Nome
+            };
+
+            return Ok(response);
+        }
+
+    
     }
 }
 

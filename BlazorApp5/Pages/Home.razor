@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using System.ComponentModel.DataAnnotations
+@using System.Net
 @using WebApplication5.DTO
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
@@ -137,41 +138,30 @@
 
         try
         {
-            var email = Uri.EscapeDataString(signInModel.Email);
-            var password = Uri.EscapeDataString(signInModel.Password);
-            var url = $"http://localhost:5189/api/Utilizadore";
-
-            var response = await Http.GetAsync(url);
+            var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore/login", signInModel);
 
             if (response.IsSuccessStatusCode)
             {
-                var users = await response.Content.ReadFromJsonAsync<List<UtilizadoreDto>>();
-                var user = users?.FirstOrDefault(u =>
-                    u.Email == signInModel.Email && u.Senha == signInModel.Password);
+                var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+                UserStateService.UserId = user.Id;
 
-                if (user != null)
-                {
-                    UserStateService.UserId = user.Id;
-
-                    ShowLoginSuccessPopup = true;
-                    StateHasChanged();
-                    await Task.Delay(3000);
-                
-                    NavigationManager.NavigateTo("/main");
-                }
-                else
-                {
-                    loginErrorMessage = "Email ou senha incorretos.";
-                }
+                ShowLoginSuccessPopup = true;
+                StateHasChanged();
+                await Task.Delay(3000);
+                NavigationManager.NavigateTo("/main");
+            }
+            else if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                loginErrorMessage = "Email ou senha incorretos.";
             }
             else
             {
-                loginErrorMessage = "Erro na requisição.";
+                loginErrorMessage = "Erro ao tentar fazer login.";
             }
         }
         catch (Exception ex)
         {
-            loginErrorMessage = $"Erro: {ex.Message}";
+            loginErrorMessage = $"Erro inesperado: {ex.Message}";
         }
     }
 

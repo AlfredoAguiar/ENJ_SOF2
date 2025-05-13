@@ -104,10 +104,11 @@
             Id = Guid.NewGuid(),
             Nome = registerModel.Name,
             Email = registerModel.Email,
-            Senha = registerModel.Password,
+            Senha = registerModel.Password, // texto puro
             Cargo = "Utilizador",
             PermissaoId = Guid.Parse("8a14aeb8-aaf8-4fcd-8d8a-a5cd1e5ec0fd")
         };
+
 
         try
         {

@@ -4,6 +4,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using WebApplication1.Controllers;
 using WebApplication1.Models;
 using WebApplication5.DTO;
@@ -25,7 +26,7 @@ namespace TestProject1
             _context.Database.EnsureDeleted();
             _context.Database.EnsureCreated();
 
-            _controller = new UtilizadoreController(_context);
+            _controller = new UtilizadoreController(_context, new PasswordHasher<Utilizadore>());
         }
 
         [TearDown]
