@@ -1,0 +1,567 @@
+﻿@page "/transactions"
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+@using System.Globalization
+
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Gestão Ativos</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <div class="nav-icon dashboard-nav-icon"></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/portfolio" class="nav-item">
+                <div class="nav-icon portfolio-nav-icon"></div>
+                <span>Carteira</span>
+            </a>
+            <a href="/transactions" class="nav-item active">
+                <div class="nav-icon transactions-nav-icon"></div>
+                <span>Transações</span>
+            </a>
+            <a href="/reports" class="nav-item">
+                <div class="nav-icon reports-nav-icon"></div>
+                <span>Relatórios</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                <div class="nav-icon logout-icon"></div>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="dashboard-header">
+            <div class="dashboard-title">
+                <h1>Transações</h1>
+                <p>Visão geral das suas transações</p>
+            </div>
+            <div class="user-profile">
+                <span class="user-greeting">Olá, <strong>@userName</strong></span>
+                <button class="user-menu-button" @onclick="ToggleUserMenu">
+                    <div class="avatar">@userInitials</div>
+                    @if (showUserMenu)
+                    {
+                        <div class="user-menu">
+                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                        </div>
+                    }
+                </button>
+            </div>
+        </header>
+
+        <!-- Transactions Content -->
+        <div class="transactions-container">
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="card-icon blue-icon">€</div>
+                    <div class="card-content">
+                        <h3>5 000,00 €</h3>
+                        <p>Receitas do Mês</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon red-icon">€</div>
+                    <div class="card-content">
+                        <h3>3 000,00 €</h3>
+                        <p>Despesas do Mês</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon green-icon">€</div>
+                    <div class="card-content">
+                        <h3>2 000,00 €</h3>
+                        <p>Fluxo Líquido</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon yellow-icon">#</div>
+                    <div class="card-content">
+                        <h3>5</h3>
+                        <p>Transações Pendentes</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Date Filter -->
+            <div class="date-filters">
+                <div class="date-range">
+                    <div class="date-range">
+                        <div class="date-field">
+                            <label>De:</label>
+                            <input type="date" @bind="startDate" @bind:format="yyyy-MM-dd" />
+                        </div>
+                        <div class="date-field">
+                            <label>Até:</label>
+                            <input type="date" @bind="endDate" @bind:format="yyyy-MM-dd" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-controls">
+                    <select @bind="selectedType">
+                        <option value="">Todos os Tipos</option>
+                        <option value="Receita">Receitas</option>
+                        <option value="Despesa">Despesas</option>
+                        <option value="Transferência">Transferências</option>
+                    </select>
+
+                    <select @bind="selectedStatus">
+                        <option value="">Todos os Status</option>
+                        <option value="Concluída">Concluídas</option>
+                        <option value="Pendente">Pendentes</option>
+                        <option value="Cancelada">Canceladas</option>
+                    </select>
+                </div>
+
+                <button class="add-button" @onclick="ShowAddModal">+ Nova Transação</button>
+            </div>
+
+            <!-- Transactions List -->
+            <div id="tx_header_section">
+        <h2 id="tx_main_title">Transações Recentes</h2>
+        <button id="tx_export_btn" @onclick="ExportTransactions">Exportar</button>
+    </div>
+
+    <div id="tx_table_wrapper">
+        <table id="tx_data_table">
+            <thead>
+                <tr>
+                    <th class="tx_col_date">Data</th>
+                    <th class="tx_col_desc">Descrição</th>
+                    <th class="tx_col_cat">Categoria</th>
+                    <th class="tx_col_asset">Ativo</th>
+                    <th class="tx_col_value">Valor</th>
+                    <th class="tx_col_status">Status</th>
+                    <th class="tx_col_actions">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var transaction in filteredTransactions)
+                {
+                    <tr class="tx_table_row">
+                        <td class="tx_date">@transaction.Date.ToString("dd/MM/yyyy")</td>
+                        <td class="tx_desc">@transaction.Description</td>
+                        <td class="tx_cat">@transaction.Category</td>
+                        <td class="tx_asset">@transaction.Asset</td>
+                        <td class="tx_value @(transaction.Amount > 0 ? "tx_positive" : "tx_negative")">
+                            @FormatCurrency(transaction.Amount)
+                        </td>
+                        <td class="tx_status">
+                            <span class="tx_status_badge tx_@transaction.Status.ToLower()">@transaction.Status</span>
+                        </td>
+                        <td class="tx_actions">
+                            <button class="tx_btn tx_view" @onclick="() => ViewTransactionDetails(transaction.Id)">
+                                <i class="tx_icon_view"></i>
+                            </button>
+                            <button class="tx_btn tx_edit" @onclick="() => EditTransaction(transaction.Id)">
+                                <i class="tx_icon_edit"></i>
+                            </button>
+                            <button class="tx_btn tx_delete" @onclick="() => DeleteTransaction(transaction.Id)">
+                                <i class="tx_icon_delete"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Transaction Modal -->
+@if (showAddModal)
+{
+    <div class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>@(editingTransactionId == 0 ? "Nova Transação" : "Editar Transação")</h2>
+                <button class="close-button" @onclick="CloseModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-tabs">
+                    <button class="tab-button @(selectedTransactionType == "Receita" ? "active" : "")" 
+                            @onclick="@(() => selectedTransactionType = "Receita")">Receita</button>
+                    <button class="tab-button @(selectedTransactionType == "Despesa" ? "active" : "")" 
+                            @onclick="@(() => selectedTransactionType = "Despesa")">Despesa</button>
+                    <button class="tab-button @(selectedTransactionType == "Transferência" ? "active" : "")" 
+                            @onclick="@(() => selectedTransactionType = "Transferência")">Transferência</button>
+                </div>
+                
+                <!-- Common Fields for All Transaction Types -->
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <input type="text" @bind="newTransaction.Description" required />
+                </div>
+                
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" @bind="newTransaction.Date" @bind:format="yyyy-MM-dd" required />
+                </div>
+                
+                <div class="form-group">
+                    <label>Valor</label>
+                    <input type="number" step="0.01" @bind="newTransaction.Amount" required />
+                </div>
+                
+                <div class="form-group">
+                    <label>Conta/Ativo</label>
+                    <select @bind="newTransaction.Asset">
+                        <option value="Conta Millennium">Conta Millennium</option>
+                        <option value="Conta Novobanco">Conta Novobanco</option>
+                        <option value="Fundo PPR Reforma Segura">Fundo PPR Reforma Segura</option>
+                        <option value="Fundo de Ações Europeias">Fundo de Ações Europeias</option>
+                        <option value="Apartamento T2 Braga">Apartamento T2 Braga</option>
+                        <option value="Loja Comercial Porto">Loja Comercial Porto</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Categoria</label>
+                    @if (selectedTransactionType == "Receita")
+                    {
+                        <select @bind="newTransaction.Category">
+                            <option value="Salário">Salário</option>
+                            <option value="Investimentos">Investimentos</option>
+                            <option value="Rendas">Rendas</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    }
+                    else if (selectedTransactionType == "Despesa")
+                    {
+                        <select @bind="newTransaction.Category">
+                            <option value="Alimentação">Alimentação</option>
+                            <option value="Habitação">Habitação</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Lazer">Lazer</option>
+                            <option value="Saúde">Saúde</option>
+                            <option value="Educação">Educação</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <select @bind="newTransaction.Category">
+                            <option value="Transferência Interna">Transferência Interna</option>
+                            <option value="Depósito">Depósito</option>
+                            <option value="Levantamento">Levantamento</option>
+                        </select>
+                    }
+                </div>
+                
+                @if (selectedTransactionType == "Transferência")
+                {
+                    <div class="form-group">
+                        <label>Conta/Ativo Destino</label>
+                        <select @bind="newTransaction.DestinationAsset">
+                            <option value="Conta Millennium">Conta Millennium</option>
+                            <option value="Conta Novobanco">Conta Novobanco</option>
+                            <option value="Fundo PPR Reforma Segura">Fundo PPR Reforma Segura</option>
+                            <option value="Fundo de Ações Europeias">Fundo de Ações Europeias</option>
+                            <option value="Apartamento T2 Braga">Apartamento T2 Braga</option>
+                            <option value="Loja Comercial Porto">Loja Comercial Porto</option>
+                        </select>
+                    </div>
+                }
+                
+                <div class="form-group">
+                    <label>Status</label>
+                    <select @bind="newTransaction.Status">
+                        <option value="Concluída">Concluída</option>
+                        <option value="Pendente">Pendente</option>
+                        <option value="Cancelada">Cancelada</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Notas</label>
+                    <textarea @bind="newTransaction.Notes"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
+                <button class="save-button" @onclick="SaveTransaction">Salvar</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteModal)
+{
+    <div class="modal-overlay">
+        <div class="modal delete-modal">
+            <div class="modal-header">
+                <h2>Confirmar Exclusão</h2>
+                <button class="close-button" @onclick="CloseModal">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir esta transação?</p>
+                <p><strong>@(transactionToDelete?.Description)</strong></p>
+                <p>Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
+                <button class="delete-button" @onclick="ConfirmDeleteTransaction">Excluir</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string userName = "João Silva";
+    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
+    private bool showUserMenu = false;
+    
+    // Transaction Management
+    private List<Transaction> transactions = new List<Transaction>();
+    private List<Transaction> filteredTransactions = new List<Transaction>();
+    private string searchTerm = "";
+    private string selectedType = "";
+    private string selectedStatus = "";
+    private DateTime startDate = DateTime.Now.AddMonths(-1);
+    private DateTime endDate = DateTime.Now;
+    
+    // Modal States
+    private bool showAddModal = false;
+    private bool showDeleteModal = false;
+    private int editingTransactionId = 0;
+    private string selectedTransactionType = "Receita";
+    private Transaction newTransaction = new Transaction();
+    private Transaction transactionToDelete;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // In a real app, we would load from TransactionService
+        await LoadMockData();
+        
+        // Set filtered transactions to all transactions initially
+        filteredTransactions = new List<Transaction>(transactions);
+    }
+    
+    private async Task LoadMockData()
+    {
+        // This would typically come from a service in a real implementation
+        transactions = new List<Transaction>
+        {
+            new Transaction 
+            { 
+                Id = 1, 
+                Description = "Salário", 
+                Category = "Salário", 
+                Amount = 2500.00m, 
+                Date = new DateTime(2025, 5, 6),
+                Asset = "Conta Millennium",
+                Status = "Concluída",
+                Type = "Receita",
+                Notes = "Salário mensal da empresa XYZ"
+            },
+            new Transaction 
+            { 
+                Id = 2, 
+                Description = "Supermercado", 
+                Category = "Alimentação", 
+                Amount = -120.00m, 
+                Date = new DateTime(2025, 5, 11),
+                Asset = "Conta Novobanco",
+                Status = "Concluída",
+                Type = "Despesa",
+                Notes = "Compras semanais"
+            },
+            new Transaction 
+            { 
+                Id = 3, 
+                Description = "Renda", 
+                Category = "Habitação", 
+                Amount = -800.00m, 
+                Date = new DateTime(2025, 5, 16),
+                Asset = "Conta Millennium",
+                Status = "Pendente",
+                Type = "Despesa",
+                Notes = "Pagamento da renda do apartamento"
+            }
+        };
+    }
+    
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+    
+    private void Logout()
+    {
+        // In a real app, implement logout logic
+        NavigationManager.NavigateTo("/login");
+    }
+    
+    private void SearchTransactions()
+    {
+        ApplyFilters();
+    }
+    
+    private void ApplyFilters()
+    {
+        filteredTransactions = transactions.Where(t => 
+            (string.IsNullOrWhiteSpace(searchTerm) || 
+             t.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             t.Category.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             t.Asset.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(selectedType) || t.Type == selectedType) &&
+            (string.IsNullOrWhiteSpace(selectedStatus) || t.Status == selectedStatus) &&
+            (t.Date >= startDate && t.Date <= endDate)
+        ).ToList();
+    }
+    
+    private void ShowAddModal()
+    {
+        editingTransactionId = 0;
+        selectedTransactionType = "Receita";
+        newTransaction = new Transaction 
+        { 
+            Type = selectedTransactionType,
+            Date = DateTime.Now,
+            Status = "Pendente"
+        };
+        showAddModal = true;
+    }
+    
+    private void EditTransaction(int id)
+    {
+        // Find the transaction to edit
+        var transaction = transactions.FirstOrDefault(t => t.Id == id);
+        if (transaction != null)
+        {
+            editingTransactionId = id;
+            selectedTransactionType = transaction.Type;
+            
+            // Create a clone of the transaction for editing
+            newTransaction = new Transaction
+            {
+                Id = transaction.Id,
+                Description = transaction.Description,
+                Category = transaction.Category,
+                Amount = transaction.Amount,
+                Date = transaction.Date,
+                Asset = transaction.Asset,
+                DestinationAsset = transaction.DestinationAsset,
+                Status = transaction.Status,
+                Type = transaction.Type,
+                Notes = transaction.Notes
+            };
+            
+            showAddModal = true;
+        }
+    }
+    
+    private void ViewTransactionDetails(int id)
+    {
+        // In a real app, navigate to transaction details page or show a modal
+        // For this example, we'll just edit it
+        EditTransaction(id);
+    }
+    
+    private void DeleteTransaction(int id)
+    {
+        transactionToDelete = transactions.FirstOrDefault(t => t.Id == id);
+        if (transactionToDelete != null)
+        {
+            showDeleteModal = true;
+        }
+    }
+    
+    private void ConfirmDeleteTransaction()
+    {
+        if (transactionToDelete != null)
+        {
+            // Remove the transaction
+            transactions.Remove(transactionToDelete);
+            
+            // Update filtered transactions
+            filteredTransactions.Remove(transactionToDelete);
+            
+            // Close modal
+            CloseModal();
+        }
+    }
+    
+    private void SaveTransaction()
+    {
+        // Ensure transaction type is set
+        newTransaction.Type = selectedTransactionType;
+        
+        // Set amount sign based on transaction type
+        if (selectedTransactionType == "Despesa" && newTransaction.Amount > 0)
+        {
+            newTransaction.Amount = -newTransaction.Amount;
+        }
+        else if (selectedTransactionType == "Receita" && newTransaction.Amount < 0)
+        {
+            newTransaction.Amount = Math.Abs(newTransaction.Amount);
+        }
+        
+        if (editingTransactionId == 0)
+        {
+            // Add new transaction
+            newTransaction.Id = transactions.Count > 0 ? transactions.Max(t => t.Id) + 1 : 1;
+            transactions.Add(newTransaction);
+        }
+        else
+        {
+            // Update existing transaction
+            var index = transactions.FindIndex(t => t.Id == editingTransactionId);
+            if (index >= 0)
+            {
+                transactions[index] = newTransaction;
+            }
+        }
+        
+        // Refresh filtered transactions
+        ApplyFilters();
+        
+        // Close modal
+        CloseModal();
+    }
+    
+    private void CloseModal()
+    {
+        showAddModal = false;
+        showDeleteModal = false;
+        editingTransactionId = 0;
+    }
+    
+    private void ExportTransactions()
+    {
+        // In a real app, implement export logic
+        // For now, just show an alert or something similar
+    }
+    
+    private string FormatCurrency(decimal value)
+    {
+        return value.ToString("N2", CultureInfo.GetCultureInfo("pt-PT")) + " €";
+    }
+    
+    // Transaction class
+    public class Transaction
+    {
+        public int Id { get; set; }
+        public string Description { get; set; }
+        public string Category { get; set; }
+        public decimal Amount { get; set; }
+        public DateTime Date { get; set; }
+        public string Asset { get; set; }
+        public string DestinationAsset { get; set; } // For transfers
+        public string Status { get; set; } // "Concluída", "Pendente", "Cancelada"
+        public string Type { get; set; } // "Receita", "Despesa", "Transferência"
+        public string Notes { get; set; }
+    }
+}

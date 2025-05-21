@@ -1,0 +1,352 @@
+﻿@page "/alerts"
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Gestão Ativos</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <div class="nav-icon dashboard-nav-icon"></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/portfolio" class="nav-item">
+                <div class="nav-icon portfolio-nav-icon"></div>
+                <span>Carteira</span>
+            </a>
+            <a href="/transactions" class="nav-item">
+                <div class="nav-icon transactions-nav-icon"></div>
+                <span>Transações</span>
+            </a>
+            <a href="/reports" class="nav-item">
+                <div class="nav-icon reports-nav-icon"></div>
+                <span>Relatórios</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                <div class="nav-icon logout-nav-icon"></div>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header with Breadcrumbs -->
+        <div class="page-header">
+            <div class="breadcrumbs">
+                <a href="/">Dashboard</a>
+                <span class="separator">/</span>
+                <span class="current">Alertas</span>
+            </div>
+            <div class="user-profile">
+                <span class="user-greeting">Olá, <strong>@userName</strong></span>
+                <button class="user-menu-button" @onclick="ToggleUserMenu">
+                    <div class="avatar">@userInitials</div>
+                    @if (showUserMenu)
+                    {
+                        <div class="user-menu">
+                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                            <a href="/settings" class="user-menu-item">Configurações</a>
+                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                        </div>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <!-- Page Title and Actions -->
+        <div class="page-title-actions">
+            <h1>Alertas</h1>
+            <div class="actions">
+                <button class="action-button">
+                    <span class="action-icon export-icon"></span>
+                    Exportar
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-stats">
+            <div class="summary-card">
+                <div class="summary-title">Total de Alertas</div>
+                <div class="summary-value">8</div>
+                <div class="summary-change">Últimos 30 dias</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-title">Alertas Urgentes</div>
+                <div class="summary-value">2</div>
+                <div class="summary-change negative">Requerem atenção</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-title">Avisos</div>
+                <div class="summary-value">3</div>
+                <div class="summary-change neutral">Informativo</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-title">Oportunidades</div>
+                <div class="summary-value">3</div>
+                <div class="summary-change positive">Para análise</div>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="dashboard-section filters-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Tipo:</label>
+                    <select @bind="selectedAlertType" class="filter-select">
+                        <option value="Todos">Todos os Tipos</option>
+                        <option value="Urgente">Alertas Urgentes</option>
+                        <option value="Aviso">Avisos</option>
+                        <option value="Oportunidade">Oportunidades</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Período:</label>
+                    <select @bind="selectedPeriod" class="filter-select">
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="30">Últimos 30 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Status:</label>
+                    <select @bind="selectedStatus" class="filter-select">
+                        <option value="Todos">Todos</option>
+                        <option value="Novo">Novo</option>
+                        <option value="Lido">Lido</option>
+                        <option value="Resolvido">Resolvido</option>
+                    </select>
+                </div>
+                
+                <div class="search-input">
+                    <input type="text" @bind="searchTerm" placeholder="Pesquisar...">
+                    <span class="search-icon"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts List -->
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2>Lista de Alertas</h2>
+            </div>
+            
+            <div class="alerts-expanded-list">
+                @foreach (var alert in FilteredAlerts())
+                {
+                    <div class="alert-expanded-item @alert.SeverityClass">
+                        <div class="alert-expanded-header">
+                            <div class="alert-expanded-title">
+                                <span class="alert-type-indicator"></span>
+                                <h3>@alert.Title</h3>
+                            </div>
+                            <div class="alert-expanded-meta">
+                                <span class="alert-date">@alert.Date.ToString("dd/MM/yyyy HH:mm")</span>
+                                <span class="alert-status-badge @alert.StatusClass">@alert.Status</span>
+                            </div>
+                        </div>
+                        <div class="alert-expanded-content">
+                            <p>@alert.Description</p>
+                            @if (!string.IsNullOrEmpty(alert.Details))
+                            {
+                                <div class="alert-details">
+                                    <p>@alert.Details</p>
+                                </div>
+                            }
+                        </div>
+                        <div class="alert-expanded-footer">
+                            <div class="alert-source">
+                                <span>Fonte: </span>
+                                <strong>@alert.Source</strong>
+                            </div>
+                            <div class="alert-asset">
+                                <span>Ativo: </span>
+                                <strong>@alert.AssetName</strong>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <div class="pagination">
+                <button class="pagination-button" disabled>
+                    <span class="pagination-prev-icon"></span>
+                </button>
+                <div class="pagination-pages">
+                    <button class="pagination-page active">1</button>
+                    <button class="pagination-page">2</button>
+                    <span class="pagination-more">...</span>
+                </div>
+                <button class="pagination-button">
+                    <span class="pagination-next-icon"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string userName = "João Silva";
+    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
+    private bool showUserMenu = false;
+    
+    // Filtros
+    private string selectedAlertType = "Todos";
+    private string selectedPeriod = "30";
+    private string selectedStatus = "Todos";
+    private string searchTerm = "";
+    
+    private IEnumerable<AlertModel> FilteredAlerts()
+    {
+        var days = int.Parse(selectedPeriod);
+        var cutoffDate = DateTime.Now.AddDays(-days);
+        
+        return allAlerts
+            .Where(a => a.Date >= cutoffDate)
+            .Where(a => selectedAlertType == "Todos" || a.Type == selectedAlertType)
+            .Where(a => selectedStatus == "Todos" || a.Status == selectedStatus)
+            .Where(a => string.IsNullOrEmpty(searchTerm) || 
+                   a.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   a.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   a.AssetName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(a => a.Date);
+    }
+
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+
+    private void Logout()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+    
+    // Dados de exemplo
+    private List<AlertModel> allAlerts = new List<AlertModel>
+    {
+        // Alertas Urgentes
+        new AlertModel {
+            Title = "Taxa Euribor Alterada",
+            Type = "Urgente",
+            Description = "A taxa Euribor a 12 meses aumentou para 4.2%.",
+            Details = "Esta alteração pode afetar significativamente os juros dos seus depósitos a prazo. Considere renegociar as taxas com o seu banco ou procurar alternativas com melhor remuneração.",
+            Source = "Sistema Financeiro",
+            AssetName = "Todos os Depósitos",
+            Date = DateTime.Now.AddHours(-12),
+            Status = "Novo",
+            StatusClass = "new",
+            SeverityClass = "danger"
+        },
+        new AlertModel {
+            Title = "Pagamento Atrasado",
+            Type = "Urgente",
+            Description = "A renda do imóvel 'Loja Comercial Porto' está atrasada há 5 dias.",
+            Details = "O inquilino ainda não realizou o pagamento da renda mensal que deveria ter sido efetuado no dia 15/05/2025. Recomenda-se entrar em contacto para verificar a situação.",
+            Source = "Sistema de Monitorização",
+            AssetName = "Loja Comercial Porto",
+            Date = DateTime.Now.AddDays(-5),
+            Status = "Lido",
+            StatusClass = "read",
+            SeverityClass = "danger"
+        },
+        
+        // Avisos
+        new AlertModel {
+            Title = "Renovação de Depósito",
+            Type = "Aviso",
+            Description = "O Depósito a Prazo Santander vence em 7 dias.",
+            Details = "Prepare-se para decidir entre renovar o depósito ou redirecionar o capital para outro investimento. As taxas atuais para renovação estão em 3.2% ao ano.",
+            Source = "Calendário Financeiro",
+            AssetName = "Depósito a Prazo Santander",
+            Date = DateTime.Now.AddDays(-1),
+            Status = "Novo",
+            StatusClass = "new",
+            SeverityClass = "warning"
+        },
+        new AlertModel {
+            Title = "Manutenção Necessária",
+            Type = "Aviso",
+            Description = "O imóvel 'Apartamento T2 Braga' necessita de revisão do sistema de aquecimento.",
+            Details = "O inquilino reportou problemas com o sistema de aquecimento central. É recomendável agendar uma manutenção preventiva antes do início do inverno.",
+            Source = "Gestão de Propriedades",
+            AssetName = "Apartamento T2 Braga",
+            Date = DateTime.Now.AddDays(-10),
+            Status = "Resolvido",
+            StatusClass = "resolved",
+            SeverityClass = "warning"
+        },
+        new AlertModel {
+            Title = "Rendimento Abaixo do Esperado",
+            Type = "Aviso",
+            Description = "O Fundo de Investimento Europeu teve desempenho 0.8% abaixo do benchmark no último trimestre.",
+            Details = "O rendimento do fundo ficou abaixo do esperado principalmente devido à volatilidade no setor tecnológico europeu. Analise se vale a pena manter o investimento ou considerar alternativas.",
+            Source = "Análise de Desempenho",
+            AssetName = "Fundo Investimento Europeu",
+            Date = DateTime.Now.AddDays(-15),
+            Status = "Lido",
+            StatusClass = "read",
+            SeverityClass = "warning"
+        },
+        
+        // Oportunidades
+        new AlertModel {
+            Title = "Nova Taxa Promocional",
+            Type = "Oportunidade",
+            Description = "O Banco XYZ está oferecendo taxa de 4.5% para novos depósitos a prazo de 12 meses.",
+            Details = "Esta taxa é 0.7% superior à média do mercado atual. Pode ser uma boa oportunidade para diversificar os seus depósitos aproveitando esta promoção por tempo limitado.",
+            Source = "Análise de Mercado",
+            AssetName = "Potencial Novo Depósito",
+            Date = DateTime.Now.AddDays(-2),
+            Status = "Novo",
+            StatusClass = "new",
+            SeverityClass = "info"
+        },
+        new AlertModel {
+            Title = "Oportunidade de Investimento Imobiliário",
+            Type = "Oportunidade",
+            Description = "Identificada uma nova oportunidade de imóvel para arrendamento em Vila Nova de Gaia.",
+            Details = "Apartamento T3 com potencial de rendimento de 5.8% ao ano, localizado em zona com alta procura para arrendamento. O preço está 12% abaixo do valor de mercado para imóveis semelhantes na região.",
+            Source = "Análise Imobiliária",
+            AssetName = "Potencial Novo Imóvel",
+            Date = DateTime.Now.AddDays(-7),
+            Status = "Lido",
+            StatusClass = "read",
+            SeverityClass = "info"
+        },
+        new AlertModel {
+            Title = "Novo Fundo de Investimento Disponível",
+            Type = "Oportunidade",
+            Description = "Lançamento de novo fundo de investimento em energias renováveis com projeção de retorno de 8.5% ao ano.",
+            Details = "Este fundo investe em projetos de energia solar e eólica em Portugal e Espanha, com baixa correlação com o mercado de ações tradicional. Pode ser uma boa adição para diversificar a sua carteira.",
+            Source = "Análise de Mercado",
+            AssetName = "Potencial Novo Fundo",
+            Date = DateTime.Now.AddDays(-20),
+            Status = "Resolvido",
+            StatusClass = "resolved",
+            SeverityClass = "info"
+        }
+    };
+    
+    public class AlertModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Details { get; set; } = string.Empty;
+        public string Source { get; set; } = string.Empty;
+        public string AssetName { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string StatusClass { get; set; } = string.Empty;
+        public string SeverityClass { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,1150 @@
+﻿@page "/portfolio"
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+@using System.Globalization
+
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Gestão Ativos</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <div class="nav-icon dashboard-nav-icon"></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/portfolio" class="nav-item active">
+                <div class="nav-icon portfolio-nav-icon"></div>
+                <span>Carteira</span>
+            </a>
+            <a href="/transactions" class="nav-item">
+                <div class="nav-icon transactions-nav-icon"></div>
+                <span>Transações</span>
+            </a>
+            <a href="/reports" class="nav-item">
+                <div class="nav-icon reports-nav-icon"></div>
+                <span>Relatórios</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                <div class="nav-icon logout-icon"></div>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="dashboard-header">
+            <div class="dashboard-title">
+                <h1>Carteira</h1>
+                <p>Gestão dos seus ativos financeiros</p>
+            </div>
+            <div class="user-profile">
+                <span class="user-greeting">Olá, <strong>@userName</strong></span>
+                <button class="user-menu-button" @onclick="ToggleUserMenu">
+                    <div class="avatar">@userInitials</div>
+                    @if (showUserMenu)
+                    {
+                        <div class="user-menu">
+                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                        </div>
+                    }
+                </button>
+            </div>
+        </header>
+
+        <!-- Portfolio Content -->
+        <div class="portfolio-container">
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="card-icon blue-icon">€</div>
+            <div class="card-content">
+                <h3>@FormatCurrency(totalValue)</h3>
+                <p>Valor Total da Carteira</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon green-icon">%</div>
+            <div class="card-content">
+                <h3>@FormatPercentage(monthlyReturn)</h3>
+                <p>Retorno Mensal</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon yellow-icon">€</div>
+            <div class="card-content">
+                <h3>@FormatCurrency(monthlyIncome)</h3>
+                <p>Rendimento Mensal</p>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon red-icon">#</div>
+            <div class="card-content">
+                <h3>@alerts</h3>
+                <p>Alertas Ativos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Add Controls -->
+    <div class="actions-bar">
+        <div class="search-container">
+            <input type="text" placeholder="Pesquisar ativos..." @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchAssets" />
+            <div class="filter-container">
+                <!-- Opção 1: Usando manipulação manual de eventos -->
+                <select value="@selectedType" @onchange="HandleTypeChange">
+                    <option value="">Todos os Tipos</option>
+                    <option value="Deposito">Depósitos a Prazo</option>
+                    <option value="Fundo">Fundos de Investimento</option>
+                    <option value="Imovel">Imóveis Arrendados</option>
+                </select>
+                @if (selectedType == "Deposito" || selectedType == "Fundo")
+                {
+                    <div class="range-filter">
+                        <span>Valor: </span>
+                        <!-- Opção 1: Usando manipulação manual de eventos -->
+                        <input type="range" min="0" max="200000" step="1000" value="@minValue" @onchange="HandleValueChange" />
+                        <span>@FormatCurrency(minValue)</span>
+                    </div>
+                }
+            </div>
+        </div>
+        <button class="add-button" @onclick="ShowAddModal">+ Adicionar Ativo</button>
+    </div>
+    <!-- Distribution Chart -->
+    <div class="allocation-section">
+        <div class="section-header">
+            <h2>Alocação de Ativos</h2>
+            <a href="javascript:void(0)" class="view-details">Ver detalhes</a>
+        </div>
+        <div class="allocation-content">
+            <div class="allocation-chart">
+                <!-- Chart would go here - using a placeholder -->
+                <div class="chart-placeholder">
+                    <div class="pie-segment deposits" style="--percentage: @depositPercentage"></div>
+                    <div class="pie-segment funds" style="--percentage: @fundsPercentage"></div>
+                    <div class="pie-segment properties" style="--percentage: @propertiesPercentage"></div>
+                    <div class="chart-center"></div>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <span class="legend-color deposits"></span>
+                        <span>Depósitos a Prazo (@depositPercentage%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color funds"></span>
+                        <span>Fundos de Investimento (@fundsPercentage%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color properties"></span>
+                        <span>Imóveis Arrendados (@propertiesPercentage%)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="allocation-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Classe</th>
+                            <th>Valor</th>
+                            <th>Alocação</th>
+                            <th>Alvo</th>
+                            <th>Retorno</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Depósitos a Prazo</td>
+                            <td>@FormatCurrency(depositValue)</td>
+                            <td>@depositPercentage%</td>
+                            <td>30.0%</td>
+                            <td class="return-value">+2.5%</td>
+                            <td><span class="status-tag sobrealoc">Sobrealoc.</span></td>
+                        </tr>
+                        <tr>
+                            <td>Fundos de Investimento</td>
+                            <td>@FormatCurrency(fundsValue)</td>
+                            <td>@fundsPercentage%</td>
+                            <td>45.0%</td>
+                            <td class="return-value">+7.8%</td>
+                            <td><span class="status-tag subaloc">Subaloc.</span></td>
+                        </tr>
+                        <tr>
+                            <td>Imóveis Arrendados</td>
+                            <td>@FormatCurrency(propertiesValue)</td>
+                            <td>@propertiesPercentage%</td>
+                            <td>25.0%</td>
+                            <td class="return-value">+4.9%</td>
+                            <td><span class="status-tag balanceado">Balanceado</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assets List -->
+    <div class="assets-section">
+        <div class="section-header">
+            <h2>Meus Ativos</h2>
+            <div class="view-toggle">
+                <button class="@(viewMode == "list" ? "active" : "")" @onclick="@(() => viewMode = "list")">
+                    <i class="list-view-icon"></i>
+                </button>
+                <button class="@(viewMode == "grid" ? "active" : "")" @onclick="@(() => viewMode = "grid")">
+                    <i class="grid-view-icon"></i>
+                </button>
+            </div>
+        </div>
+
+        @if (viewMode == "list")
+        {
+            <div class="assets-list">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th>Retorno</th>
+                            <th>Data de Vencimento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var asset in filteredAssets)
+                        {
+                            <tr>
+                                <td>@asset.Name</td>
+                                <td>@GetAssetTypeName(asset.Type)</td>
+                                <td>@FormatCurrency(asset.Value)</td>
+                                <td class="return-value">+@asset.Return%</td>
+                                <td>@(asset.MaturityDate?.ToString("dd/MM/yyyy") ?? "N/A")</td>
+                                <td class="actions-cell">
+                                    <button class="action-button view" @onclick="() => ViewAssetDetails(asset.Id)">
+                                        <i class="view-icon"></i>
+                                    </button>
+                                    <button class="action-button edit" @onclick="() => EditAsset(asset.Id)">
+                                        <i class="edit-icon"></i>
+                                    </button>
+                                    <button class="action-button delete" @onclick="() => DeleteAsset(asset.Id)">
+                                        <i class="delete-icon"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="assets-grid">
+                @foreach (var asset in filteredAssets)
+                {
+                    <div class="asset-card @asset.Type.ToLower()">
+                        <div class="asset-card-header">
+                            <h3>@asset.Name</h3>
+                            <span class="asset-type-tag">@GetAssetTypeName(asset.Type)</span>
+                        </div>
+                        <div class="asset-card-body">
+                            <div class="asset-detail">
+                                <span class="detail-label">Valor:</span>
+                                <span class="detail-value">@FormatCurrency(asset.Value)</span>
+                            </div>
+                            <div class="asset-detail">
+                                <span class="detail-label">Retorno:</span>
+                                <span class="detail-value return-value">+@asset.Return%</span>
+                            </div>
+                            @if (asset.Type == "Deposito")
+                            {
+                                <div class="asset-detail">
+                                    <span class="detail-label">Banco:</span>
+                                    <span class="detail-value">@asset.Bank</span>
+                                </div>
+                                <div class="asset-detail">
+                                    <span class="detail-label">Taxa Juro:</span>
+                                    <span class="detail-value">@asset.InterestRate%</span>
+                                </div>
+                            }
+                            else if (asset.Type == "Fundo")
+                            {
+                                <div class="asset-detail">
+                                    <span class="detail-label">Gestor:</span>
+                                    <span class="detail-value">@asset.Manager</span>
+                                </div>
+                                <div class="asset-detail">
+                                    <span class="detail-label">Risco:</span>
+                                    <span class="detail-value">@asset.RiskLevel</span>
+                                </div>
+                            }
+                            else if (asset.Type == "Imovel")
+                            {
+                                <div class="asset-detail">
+                                    <span class="detail-label">Localização:</span>
+                                    <span class="detail-value">@asset.Location</span>
+                                </div>
+                                <div class="asset-detail">
+                                    <span class="detail-label">Renda Mensal:</span>
+                                    <span class="detail-value">@FormatCurrency(asset.MonthlyRent)</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="asset-card-footer">
+                            <button class="card-action-btn view" @onclick="() => ViewAssetDetails(asset.Id)">
+                                Detalhes
+                            </button>
+                            <button class="card-action-btn edit" @onclick="() => EditAsset(asset.Id)">
+                                Editar
+                            </button>
+                            <button class="card-action-btn delete" @onclick="() => DeleteAsset(asset.Id)">
+                                Excluir
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+    </div>
+</div>
+
+<!-- Add Asset Modal -->
+@if (showAddModal)
+{
+    <div class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>@(editingAssetId == 0 ? "Adicionar Novo Ativo" : "Editar Ativo")</h2>
+                <button class="close-button" @onclick="CloseModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-tabs">
+                    <button class="tab-button @(selectedAssetType == "Deposito" ? "active" : "")" 
+                            @onclick="@(() => selectedAssetType = "Deposito")">Depósito a Prazo</button>
+                    <button class="tab-button @(selectedAssetType == "Fundo" ? "active" : "")" 
+                            @onclick="@(() => selectedAssetType = "Fundo")">Fundo de Investimento</button>
+                    <button class="tab-button @(selectedAssetType == "Imovel" ? "active" : "")" 
+                            @onclick="@(() => selectedAssetType = "Imovel")">Imóvel Arrendado</button>
+                </div>
+                
+                <!-- Common Fields for All Asset Types -->
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" @bind="newAsset.Name" required />
+                </div>
+                <div class="form-group">
+                    <label>Valor</label>
+                    <input type="number" step="0.01" @bind="newAsset.Value" required />
+                </div>
+                
+                @if (selectedAssetType == "Deposito")
+                {
+                    <!-- Fields Specific to Deposit -->
+                    <div class="form-group">
+                        <label>Banco</label>
+                        <input type="text" @bind="newAsset.Bank" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Número da Conta</label>
+                        <input type="text" @bind="newAsset.AccountNumber" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Titulares</label>
+                        <input type="text" @bind="newAsset.Holders" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa de Juro Anual (%)</label>
+                        <input type="number" step="0.01" @bind="newAsset.InterestRate" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Data de Vencimento</label>
+                        <input type="date" @bind="newAsset.MaturityDate" />
+                    </div>
+                }
+                else if (selectedAssetType == "Fundo")
+                {
+                    <!-- Fields Specific to Fund -->
+                    <div class="form-group">
+                        <label>Gestor do Fundo</label>
+                        <input type="text" @bind="newAsset.Manager" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa de Juro por Defeito (%)</label>
+                        <input type="number" step="0.01" @bind="newAsset.DefaultInterestRate" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Nível de Risco</label>
+                        <select @bind="newAsset.RiskLevel">
+                            <option value="Baixo">Baixo</option>
+                            <option value="Médio">Médio</option>
+                            <option value="Alto">Alto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Período de Resgate (dias)</label>
+                        <input type="number" @bind="newAsset.RedemptionPeriod" />
+                    </div>
+                    <div class="form-group">
+                        <label>Taxas Específicas por Mês</label>
+                        <div class="month-rates">
+                            @for (int i = 0; i < 12; i++)
+                            {
+                                int month = i;
+                                <div class="month-rate">
+                                    <label>@(CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(i + 1))</label>
+                                    <input type="number" step="0.01" @bind="monthlyRates[i]" />
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (selectedAssetType == "Imovel")
+                {
+                    <!-- Fields Specific to Property -->
+                    <div class="form-group">
+                        <label>Designação</label>
+                        <input type="text" @bind="newAsset.Description" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Localização/Morada</label>
+                        <input type="text" @bind="newAsset.Location" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Valor do Imóvel</label>
+                        <input type="number" step="0.01" @bind="newAsset.PropertyValue" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Valor da Renda Mensal</label>
+                        <input type="number" step="0.01" @bind="newAsset.MonthlyRent" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Mensal do Condomínio</label>
+                        <input type="number" step="0.01" @bind="newAsset.MonthlyCondo" />
+                    </div>
+                    <div class="form-group">
+                        <label>Despesas Anuais Estimadas</label>
+                        <input type="number" step="0.01" @bind="newAsset.AnnualExpenses" />
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
+                <button class="save-button" @onclick="SaveAsset">Salvar</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- View Asset Details Modal -->
+@if (showViewModal && selectedAsset != null)
+{
+    <div class="modal-overlay">
+        <div class="modal details-modal">
+            <div class="modal-header">
+                <h2>Detalhes do Ativo</h2>
+                <button class="close-button" @onclick="CloseModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="asset-details-header">
+                    <h3>@selectedAsset.Name</h3>
+                    <span class="asset-type-tag">@GetAssetTypeName(selectedAsset.Type)</span>
+                </div>
+                
+                <div class="asset-details-content">
+                    <div class="detail-section">
+                        <h4>Informações Gerais</h4>
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="detail-label">Valor Total:</span>
+                                <span class="detail-value">@FormatCurrency(selectedAsset.Value)</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Retorno:</span>
+                                <span class="detail-value return-value">+@selectedAsset.Return%</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Data de Aquisição:</span>
+                                <span class="detail-value">@selectedAsset.AcquisitionDate.ToString("dd/MM/yyyy")</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    @if (selectedAsset.Type == "Deposito")
+                    {
+                        <div class="detail-section">
+                            <h4>Detalhes do Depósito</h4>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Banco:</span>
+                                    <span class="detail-value">@selectedAsset.Bank</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Número da Conta:</span>
+                                    <span class="detail-value">@selectedAsset.AccountNumber</span>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Titulares:</span>
+                                    <span class="detail-value">@selectedAsset.Holders</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Taxa de Juro Anual:</span>
+                                    <span class="detail-value">@selectedAsset.InterestRate%</span>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Data de Vencimento:</span>
+                                    <span class="detail-value">@(selectedAsset.MaturityDate?.ToString("dd/MM/yyyy") ?? "N/A")</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Juro Mensal:</span>
+                                    <span class="detail-value">@FormatCurrency(selectedAsset.Value * selectedAsset.InterestRate / 100 / 12)</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (selectedAsset.Type == "Fundo")
+                    {
+                        <div class="detail-section">
+                            <h4>Detalhes do Fundo</h4>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Gestor:</span>
+                                    <span class="detail-value">@selectedAsset.Manager</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Nível de Risco:</span>
+                                    <span class="detail-value">@selectedAsset.RiskLevel</span>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Taxa por Defeito:</span>
+                                    <span class="detail-value">@selectedAsset.DefaultInterestRate%</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Período de Resgate:</span>
+                                    <span class="detail-value">@selectedAsset.RedemptionPeriod dias</span>
+                                </div>
+                            </div>
+                            
+                            <h4 class="mt-4">Taxas Específicas por Mês</h4>
+                            <div class="monthly-rates-grid">
+                                @for (int i = 0; i < 12; i++)
+                                {
+                                    <div class="monthly-rate-item">
+                                        <span class="month-name">@CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i + 1)</span>
+                                        <span class="month-rate">@(selectedAsset.MonthlyRates != null && i < selectedAsset.MonthlyRates.Count ? selectedAsset.MonthlyRates[i] + "%" : selectedAsset.DefaultInterestRate + "%")</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (selectedAsset.Type == "Imovel")
+                    {
+                        <div class="detail-section">
+                            <h4>Detalhes do Imóvel</h4>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Designação:</span>
+                                    <span class="detail-value">@selectedAsset.Description</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Localização:</span>
+                                    <span class="detail-value">@selectedAsset.Location</span>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Valor do Imóvel:</span>
+                                    <span class="detail-value">@FormatCurrency(selectedAsset.PropertyValue)</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Renda Mensal:</span>
+                                    <span class="detail-value">@FormatCurrency(selectedAsset.MonthlyRent)</span>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Condomínio Mensal:</span>
+                                    <span class="detail-value">@FormatCurrency(selectedAsset.MonthlyCondo)</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Despesas Anuais:</span>
+                                    <span class="detail-value">@FormatCurrency(selectedAsset.AnnualExpenses)</span>
+                                </div>
+                            </div>
+                            
+                            <h4 class="mt-4">Análise Financeira</h4>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Rendimento Anual Bruto:</span>
+                                    <span class="detail-value">@FormatCurrency(selectedAsset.MonthlyRent * 12)</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Despesas Totais Anuais:</span>
+                                    <span class="detail-value">@FormatCurrency((selectedAsset.MonthlyCondo * 12) + selectedAsset.AnnualExpenses)</span>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-item">
+                                    <span class="detail-label">Resultado Líquido Anual:</span>
+                                    <span class="detail-value">@FormatCurrency((selectedAsset.MonthlyRent * 12) - ((selectedAsset.MonthlyCondo * 12) + selectedAsset.AnnualExpenses))</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Taxa de Rentabilidade:</span>
+                                    <span class="detail-value">@((selectedAsset.PropertyValue > 0 ? Math.Round(((selectedAsset.MonthlyRent * 12) / selectedAsset.PropertyValue) * 100, 2) : 0).ToString("0.00"))%</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="edit-button" @onclick="() => EditAsset(selectedAsset.Id)">Editar</button>
+                <button class="close-modal-button" @onclick="CloseModal">Fechar</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteModal)
+{
+    <div class="modal-overlay">
+        <div class="modal delete-modal">
+            <div class="modal-header">
+                <h2>Confirmar Exclusão</h2>
+                <button class="close-button" @onclick="CloseModal">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este ativo?</p>
+                <p><strong>@(assetToDelete?.Name)</strong></p>
+                <p>Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
+                <button class="delete-button" @onclick="ConfirmDeleteAsset">Excluir</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string userName = "João Silva";
+    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
+    private bool showUserMenu = false;
+    
+    // Asset Management
+    private List<FinancialAsset> assets = new List<FinancialAsset>();
+    private List<FinancialAsset> filteredAssets = new List<FinancialAsset>();
+    private string searchTerm = "";
+    private string selectedType = "";
+    private decimal minValue = 0;
+    private string viewMode = "list";
+    
+    // Summary Statistics
+    private decimal totalValue;
+    private decimal monthlyReturn;
+    private decimal monthlyIncome;
+    private int alerts;
+    
+    // Asset Distribution
+    private decimal depositValue;
+    private decimal fundsValue;
+    private decimal propertiesValue;
+    private int depositPercentage;
+    private int fundsPercentage;
+    private int propertiesPercentage;
+    
+    // Modal States
+    private bool showAddModal = false;
+    private bool showViewModal = false;
+    private bool showDeleteModal = false;
+    private int editingAssetId = 0;
+    private string selectedAssetType = "Deposito";
+    private FinancialAsset newAsset = new FinancialAsset();
+    private FinancialAsset selectedAsset;
+    private FinancialAsset assetToDelete;
+    private decimal[] monthlyRates = new decimal[12];
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // In a real app, we would load from AssetService
+        await LoadMockData();
+        
+        // Calculate summary statistics
+        CalculateSummaryStatistics();
+        
+        // Set filtered assets to all assets initially
+        filteredAssets = new List<FinancialAsset>(assets);
+    }
+    // Adicione estes métodos ao seu arquivo .razor ou .razor.cs
+    private void HandleTypeChange(ChangeEventArgs e)
+    {
+        selectedType = e.Value?.ToString() ?? "";
+        FilterByType();
+    }
+
+    private void HandleValueChange(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out decimal newValue))
+        {
+            minValue = newValue;
+            FilterByValue();
+        }
+    }
+    private async Task LoadMockData()
+    {
+        // This would typically come from a service in a real implementation
+        assets = new List<FinancialAsset>
+        {
+            // Depósitos
+            new FinancialAsset 
+            { 
+                Id = 1, 
+                Name = "Depósito a Prazo Millennium", 
+                Type = "Deposito", 
+                Value = 87500m, 
+                Return = 2.5m, 
+                Bank = "Millennium BCP", 
+                AccountNumber = "PT50123456789012345678901",
+                Holders = "João Silva",
+                InterestRate = 2.5m,
+                AcquisitionDate = DateTime.Now.AddMonths(-6),
+                MaturityDate = DateTime.Now.AddMonths(6)
+            },
+            new FinancialAsset 
+            { 
+                Id = 2, 
+                Name = "Depósito Poupança Novobanco", 
+                Type = "Deposito", 
+                Value = 26530m, 
+                Return = 2.1m, 
+                Bank = "Novobanco", 
+                AccountNumber = "PT50234567890123456789012",
+                Holders = "João Silva, Maria Silva",
+                InterestRate = 2.1m,
+                AcquisitionDate = DateTime.Now.AddMonths(-12),
+                MaturityDate = DateTime.Now.AddMonths(12)
+            },
+            
+            // Fundos
+            new FinancialAsset 
+            { 
+                Id = 3, 
+                Name = "Fundo PPR Reforma Segura", 
+                Type = "Fundo", 
+                Value = 75320m, 
+                Return = 7.8m, 
+                Manager = "Optimize Investment Partners",
+                DefaultInterestRate = 7.8m,
+                RiskLevel = "Médio",
+                RedemptionPeriod = 90,
+                AcquisitionDate = DateTime.Now.AddMonths(-18),
+                MonthlyRates = new List<decimal> { 7.1m, 7.3m, 7.4m, 7.6m, 7.7m, 7.9m, 8.0m, 8.1m, 8.0m, 7.9m, 7.8m, 7.7m }
+            },
+            new FinancialAsset 
+            { 
+                Id = 4, 
+                Name = "Fundo de Ações Europeias", 
+                Type = "Fundo", 
+                Value = 54880m, 
+                Return = 9.2m, 
+                Manager = "Caixa Gestão de Ativos",
+                DefaultInterestRate = 9.2m,
+                RiskLevel = "Alto",
+                RedemptionPeriod = 30,
+                AcquisitionDate = DateTime.Now.AddMonths(-24),
+                MonthlyRates = new List<decimal> { 8.5m, 8.7m, 8.9m, 9.1m, 9.3m, 9.5m, 9.7m, 9.8m, 9.7m, 9.5m, 9.3m, 9.2m }
+            },
+            
+            // Imóveis
+            new FinancialAsset 
+            { 
+                Id = 5, 
+                Name = "Apartamento T2 Braga", 
+                Type = "Imovel", 
+                Value = 45000m, 
+                Return = 4.9m, 
+                Description = "Apartamento T2 em Braga",
+                Location = "Rua do Carmo, Braga",
+                PropertyValue = 180000m,
+                MonthlyRent = 650m,
+                MonthlyCondo = 75m,
+                AnnualExpenses = 1200m,
+                AcquisitionDate = DateTime.Now.AddYears(-3)
+            },
+            new FinancialAsset 
+            { 
+                Id = 6, 
+                Name = "Loja Comercial Porto", 
+                Type = "Imovel", 
+                Value = 36450m, 
+                Return = 5.3m, 
+                Description = "Loja Comercial no Centro do Porto",
+                Location = "Rua Santa Catarina, Porto",
+                PropertyValue = 145000m,
+                MonthlyRent = 820m,
+                MonthlyCondo = 120m,
+                AnnualExpenses = 1800m,
+                AcquisitionDate = DateTime.Now.AddYears(-5)
+            }
+        };
+    }
+    
+    private void CalculateSummaryStatistics()
+    {
+        // Calculate total values
+        totalValue = assets.Sum(a => a.Value);
+        monthlyIncome = 
+            assets.Where(a => a.Type == "Deposito").Sum(a => a.Value * a.InterestRate / 100 / 12) +
+            assets.Where(a => a.Type == "Fundo").Sum(a => a.Value * a.Return / 100 / 12) +
+            assets.Where(a => a.Type == "Imovel").Sum(a => a.MonthlyRent - a.MonthlyCondo);
+        
+        // Calculate average return (weighted by value)
+        if (totalValue > 0)
+        {
+            monthlyReturn = assets.Sum(a => a.Value * a.Return) / totalValue;
+        }
+        
+        // Calculate alerts (currently just a static number for the UI)
+        alerts = 2;
+        
+        // Calculate asset values by type
+        depositValue = assets.Where(a => a.Type == "Deposito").Sum(a => a.Value);
+        fundsValue = assets.Where(a => a.Type == "Fundo").Sum(a => a.Value);
+        propertiesValue = assets.Where(a => a.Type == "Imovel").Sum(a => a.Value);
+        
+        // Calculate percentages
+        if (totalValue > 0)
+        {
+            depositPercentage = (int)Math.Round((depositValue / totalValue) * 100);
+            fundsPercentage = (int)Math.Round((fundsValue / totalValue) * 100);
+            propertiesPercentage = (int)Math.Round((propertiesValue / totalValue) * 100);
+        }
+    }
+    
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+    
+    private void Logout()
+    {
+        // In a real app, implement logout logic
+        NavigationManager.NavigateTo("/login");
+    }
+    
+    private void SearchAssets()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            // Reset to all assets if search is cleared
+            filteredAssets = new List<FinancialAsset>(assets);
+        }
+        else
+        {
+            // Filter assets by name (case-insensitive)
+            filteredAssets = assets.Where(a => 
+                a.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (a.Type == "Deposito" && a.Bank != null && a.Bank.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                (a.Type == "Fundo" && a.Manager != null && a.Manager.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                (a.Type == "Imovel" && a.Location != null && a.Location.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+        
+        // Apply additional filters if set
+        ApplyFilters();
+    }
+    
+    private void FilterByType()
+    {
+        // Reset to all assets first
+        filteredAssets = new List<FinancialAsset>(assets);
+        
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            SearchAssets();
+        }
+        
+        // Apply type filter
+        if (!string.IsNullOrWhiteSpace(selectedType))
+        {
+            filteredAssets = filteredAssets.Where(a => a.Type == selectedType).ToList();
+        }
+        
+        // Apply value filter if applicable
+        if (minValue > 0 && (selectedType == "Deposito" || selectedType == "Fundo"))
+        {
+            filteredAssets = filteredAssets.Where(a => a.Value >= minValue).ToList();
+        }
+    }
+    
+    private void FilterByValue()
+    {
+        // Only apply value filter if type is Deposit or Fund
+        if (selectedType == "Deposito" || selectedType == "Fundo")
+        {
+            // Apply all filters
+            FilterByType();
+        }
+    }
+    
+    private void ApplyFilters()
+    {
+        // Apply type filter
+        if (!string.IsNullOrWhiteSpace(selectedType))
+        {
+            filteredAssets = filteredAssets.Where(a => a.Type == selectedType).ToList();
+        }
+        
+        // Apply value filter if applicable
+        if (minValue > 0 && (selectedType == "Deposito" || selectedType == "Fundo"))
+        {
+            filteredAssets = filteredAssets.Where(a => a.Value >= minValue).ToList();
+        }
+    }
+    
+    private void ShowAddModal()
+    {
+        editingAssetId = 0;
+        selectedAssetType = "Deposito";
+        newAsset = new FinancialAsset 
+        { 
+            Type = selectedAssetType,
+            AcquisitionDate = DateTime.Now
+        };
+        ClearMonthlyRates();
+        showAddModal = true;
+    }
+    
+    private void ClearMonthlyRates()
+    {
+        for (int i = 0; i < 12; i++)
+        {
+            monthlyRates[i] = 0;
+        }
+    }
+    
+    private void EditAsset(int id)
+    {
+        // Find the asset to edit
+        var asset = assets.FirstOrDefault(a => a.Id == id);
+        if (asset != null)
+        {
+            editingAssetId = id;
+            selectedAssetType = asset.Type;
+            
+            // Create a clone of the asset for editing
+            newAsset = new FinancialAsset
+            {
+                Id = asset.Id,
+                Name = asset.Name,
+                Type = asset.Type,
+                Value = asset.Value,
+                Return = asset.Return,
+                Bank = asset.Bank,
+                AccountNumber = asset.AccountNumber,
+                Holders = asset.Holders,
+                InterestRate = asset.InterestRate,
+                AcquisitionDate = asset.AcquisitionDate,
+                MaturityDate = asset.MaturityDate,
+                Manager = asset.Manager,
+                DefaultInterestRate = asset.DefaultInterestRate,
+                RiskLevel = asset.RiskLevel,
+                RedemptionPeriod = asset.RedemptionPeriod,
+                Description = asset.Description,
+                Location = asset.Location,
+                PropertyValue = asset.PropertyValue,
+                MonthlyRent = asset.MonthlyRent,
+                MonthlyCondo = asset.MonthlyCondo,
+                AnnualExpenses = asset.AnnualExpenses
+            };
+            
+            // Set monthly rates if applicable
+            if (asset.Type == "Fundo" && asset.MonthlyRates != null)
+            {
+                for (int i = 0; i < 12; i++)
+                {
+                    if (i < asset.MonthlyRates.Count)
+                    {
+                        monthlyRates[i] = asset.MonthlyRates[i];
+                    }
+                    else
+                    {
+                        monthlyRates[i] = asset.DefaultInterestRate;
+                    }
+                }
+            }
+            else
+            {
+                ClearMonthlyRates();
+            }
+            
+            showAddModal = true;
+        }
+    }
+    
+    private void ViewAssetDetails(int id)
+    {
+        selectedAsset = assets.FirstOrDefault(a => a.Id == id);
+        if (selectedAsset != null)
+        {
+            showViewModal = true;
+        }
+    }
+    
+    private void DeleteAsset(int id)
+    {
+        assetToDelete = assets.FirstOrDefault(a => a.Id == id);
+        if (assetToDelete != null)
+        {
+            showDeleteModal = true;
+        }
+    }
+    
+    private void ConfirmDeleteAsset()
+    {
+        if (assetToDelete != null)
+        {
+            // Remove the asset
+            assets.Remove(assetToDelete);
+            
+            // Update filtered assets
+            filteredAssets.Remove(assetToDelete);
+            
+            // Recalculate summary statistics
+            CalculateSummaryStatistics();
+            
+            // Close modal
+            CloseModal();
+        }
+    }
+    
+    private void SaveAsset()
+    {
+        // Ensure asset type is set
+        newAsset.Type = selectedAssetType;
+        
+        if (selectedAssetType == "Fundo")
+        {
+            // Set monthly rates
+            newAsset.MonthlyRates = new List<decimal>(monthlyRates);
+        }
+        
+        // Calculate return based on asset type
+        if (selectedAssetType == "Deposito")
+        {
+            newAsset.Return = newAsset.InterestRate;
+        }
+        else if (selectedAssetType == "Fundo")
+        {
+            newAsset.Return = newAsset.DefaultInterestRate;
+        }
+        else if (selectedAssetType == "Imovel" && newAsset.PropertyValue > 0)
+        {
+            // Calculate annual return rate = (monthly rent * 12) / property value
+            newAsset.Return = Math.Round((newAsset.MonthlyRent * 12) / newAsset.PropertyValue * 100, 2);
+        }
+        
+        if (editingAssetId == 0)
+        {
+            // Add new asset
+            newAsset.Id = assets.Count > 0 ? assets.Max(a => a.Id) + 1 : 1;
+            assets.Add(newAsset);
+        }
+        else
+        {
+            // Update existing asset
+            var index = assets.FindIndex(a => a.Id == editingAssetId);
+            if (index >= 0)
+            {
+                assets[index] = newAsset;
+            }
+        }
+        
+        // Recalculate summary statistics
+        CalculateSummaryStatistics();
+        
+        // Refresh filtered assets
+        SearchAssets();
+        
+        // Close modal
+        CloseModal();
+    }
+    
+    private void CloseModal()
+    {
+        showAddModal = false;
+        showViewModal = false;
+        showDeleteModal = false;
+        editingAssetId = 0;
+    }
+    
+    private string GetAssetTypeName(string type)
+    {
+        return type switch
+        {
+            "Deposito" => "Depósito a Prazo",
+            "Fundo" => "Fundo de Investimento",
+            "Imovel" => "Imóvel Arrendado",
+            _ => type
+        };
+    }
+    
+    private string FormatCurrency(decimal value)
+    {
+        return value.ToString("N2", CultureInfo.GetCultureInfo("pt-PT")) + " €";
+    }
+    
+    private string FormatPercentage(decimal value)
+    {
+        return "+" + value.ToString("0.0", CultureInfo.GetCultureInfo("pt-PT")) + "%";
+    }
+    
+    // Financial Asset class
+    public class FinancialAsset
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Type { get; set; } // "Deposito", "Fundo", "Imovel"
+        public decimal Value { get; set; }
+        public decimal Return { get; set; } // Annual return rate as percentage
+        public DateTime AcquisitionDate { get; set; }
+        
+        // Deposit-specific properties
+        public string Bank { get; set; }
+        public string AccountNumber { get; set; }
+        public string Holders { get; set; }
+        public decimal InterestRate { get; set; }
+        public DateTime? MaturityDate { get; set; }
+        
+        // Fund-specific properties
+        public string Manager { get; set; }
+        public decimal DefaultInterestRate { get; set; }
+        public string RiskLevel { get; set; }
+        public int RedemptionPeriod { get; set; }
+        public List<decimal> MonthlyRates { get; set; }
+        
+        // Property-specific properties
+        public string Description { get; set; }
+        public string Location { get; set; }
+        public decimal PropertyValue { get; set; }
+        public decimal MonthlyRent { get; set; }
+        public decimal MonthlyCondo { get; set; }
+        public decimal AnnualExpenses { get; set; }
+    }
+}

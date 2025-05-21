@@ -1,0 +1,389 @@
+﻿@page "/payments"
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Gestão Ativos</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <div class="nav-icon dashboard-nav-icon"></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/portfolio" class="nav-item">
+                <div class="nav-icon portfolio-nav-icon"></div>
+                <span>Carteira</span>
+            </a>
+            <a href="/transactions" class="nav-item">
+                <div class="nav-icon transactions-nav-icon"></div>
+                <span>Transações</span>
+            </a>
+            <a href="/reports" class="nav-item">
+                <div class="nav-icon reports-nav-icon"></div>
+                <span>Relatórios</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                <div class="nav-icon logout-nav-icon"></div>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header with Breadcrumbs -->
+        <div class="page-header">
+            <div class="breadcrumbs">
+                <a href="/">Dashboard</a>
+                <span class="separator">/</span>
+                <span class="current">Próximos Pagamentos</span>
+            </div>
+            <div class="user-profile">
+                <span class="user-greeting">Olá, <strong>@userName</strong></span>
+                <button class="user-menu-button" @onclick="ToggleUserMenu">
+                    <div class="avatar">@userInitials</div>
+                    @if (showUserMenu)
+                    {
+                        <div class="user-menu">
+                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                        </div>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <!-- Page Title and Actions -->
+        <div class="page-title-actions">
+            <h1>Próximos Pagamentos</h1>
+            <div class="actions">
+                <button class="action-button">
+                    <span class="action-icon export-icon"></span>
+                    Exportar
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-stats">
+            <div class="summary-card">
+                <div class="summary-title">Total Próximo Mês</div>
+                <div class="summary-value">1.670,00 €</div>
+                <div class="summary-change positive">+85,00 € face ao mês anterior</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-title">Depósitos a Prazo</div>
+                <div class="summary-value">203,97 €</div>
+                <div class="summary-change">3 pagamentos</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-title">Fundos de Investimento</div>
+                <div class="summary-value">597,69 €</div>
+                <div class="summary-change">3 pagamentos</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-title">Imóveis Arrendados</div>
+                <div class="summary-value">1.520,00 €</div>
+                <div class="summary-change">3 pagamentos</div>
+            </div>
+        </div>
+
+        <!-- Simple Filter Section -->
+        <div class="dashboard-section filters-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Período:</label>
+                    <select @bind="selectedPeriod" class="filter-select">
+                        <option value="30">Próximos 30 dias</option>
+                        <option value="60">Próximos 60 dias</option>
+                        <option value="90">Próximos 90 dias</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Tipo:</label>
+                    <select @bind="selectedAssetType" class="filter-select">
+                        <option value="Todos">Todos os Tipos</option>
+                        <option value="Depósito">Depósitos a Prazo</option>
+                        <option value="Fundo">Fundos de Investimento</option>
+                        <option value="Imóvel">Imóveis Arrendados</option>
+                    </select>
+                </div>
+                
+                <div class="search-input">
+                    <input type="text" @bind="searchTerm" placeholder="Pesquisar...">
+                    <span class="search-icon"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments List -->
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2>Lista de Pagamentos</h2>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Ativo</th>
+                            <th>Tipo</th>
+                            <th>Descrição</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var payment in FilteredPayments())
+                        {
+                            <tr>
+                                <td>@payment.Date.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <div class="asset-name">
+                                        <span class="ticker">@payment.AssetId</span>
+                                        <span class="name">@payment.AssetName</span>
+                                    </div>
+                                </td>
+                                <td><span class="payment-type @GetPaymentTypeClass(payment.Type)">@payment.Type</span></td>
+                                <td>@payment.Description</td>
+                                <td>@payment.Value.ToString("C2")</td>
+                                <td><span class="status-badge @payment.StatusClass">@payment.Status</span></td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="icon-button" title="Ver detalhes">
+                                            <span class="details-icon"></span>
+                                        </button>
+                                        <button class="icon-button" title="Confirmar recebimento">
+                                            <span class="check-icon"></span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="pagination">
+                <button class="pagination-button" disabled>
+                    <span class="pagination-prev-icon"></span>
+                </button>
+                <div class="pagination-pages">
+                    <button class="pagination-page active">1</button>
+                    <button class="pagination-page">2</button>
+                    <span class="pagination-more">...</span>
+                </div>
+                <button class="pagination-button">
+                    <span class="pagination-next-icon"></span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Payment Distribution -->
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2>Distribuição por Tipo de Ativo</h2>
+            </div>
+            <div class="distribution-bars">
+                <div class="distribution-item">
+                    <div class="distribution-label">
+                        <span class="distribution-color" style="background-color: #3b82f6;"></span>
+                        <span>Depósitos a Prazo</span>
+                    </div>
+                    <div class="distribution-bar-container">
+                        <div class="distribution-bar" style="width: 12.2%"></div>
+                        <span class="distribution-value">12.2%</span>
+                    </div>
+                </div>
+                
+                <div class="distribution-item">
+                    <div class="distribution-label">
+                        <span class="distribution-color" style="background-color: #10b981;"></span>
+                        <span>Fundos de Investimento</span>
+                    </div>
+                    <div class="distribution-bar-container">
+                        <div class="distribution-bar" style="width: 35.8%"></div>
+                        <span class="distribution-value">35.8%</span>
+                    </div>
+                </div>
+                
+                <div class="distribution-item">
+                    <div class="distribution-label">
+                        <span class="distribution-color" style="background-color: #f59e0b;"></span>
+                        <span>Imóveis Arrendados</span>
+                    </div>
+                    <div class="distribution-bar-container">
+                        <div class="distribution-bar" style="width: 52.0%"></div>
+                        <span class="distribution-value">52.0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string userName = "João Silva";
+    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
+    private bool showUserMenu = false;
+    
+    // Filtros
+    private string selectedPeriod = "30";
+    private string selectedAssetType = "Todos";
+    private string searchTerm = "";
+    
+    private string GetPaymentTypeClass(string type)
+    {
+        return type.ToLower() switch
+        {
+            "depósito" => "deposit",
+            "fundo" => "fund",
+            "imóvel" => "property",
+            _ => "other"
+        };
+    }
+    
+    private IEnumerable<PaymentModel> FilteredPayments()
+    {
+        var days = int.Parse(selectedPeriod);
+        var cutoffDate = DateTime.Now.AddDays(days);
+        
+        return allPayments
+            .Where(p => p.Date <= cutoffDate)
+            .Where(p => selectedAssetType == "Todos" || p.Type == selectedAssetType)
+            .Where(p => string.IsNullOrEmpty(searchTerm) || 
+                   p.AssetName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                   p.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.Date);
+    }
+
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+
+    private void Logout()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+    
+    // Dados de exemplo
+    private List<PaymentModel> allPayments = new List<PaymentModel>
+    {
+        // Depósitos a Prazo
+        new PaymentModel {
+            AssetId = "DEP001",
+            AssetName = "Depósito a Prazo Millennium",
+            Type = "Depósito",
+            Date = DateTime.Now.AddDays(5),
+            Value = 87.50M,
+            Description = "Juros Mensais",
+            Status = "Pendente",
+            StatusClass = "pending"
+        },
+        new PaymentModel {
+            AssetId = "DEP002",
+            AssetName = "Certificados do Tesouro",
+            Type = "Depósito",
+            Date = DateTime.Now.AddDays(15),
+            Value = 72.92M,
+            Description = "Juros Mensais",
+            Status = "Pendente",
+            StatusClass = "pending"
+        },
+        new PaymentModel {
+            AssetId = "DEP003",
+            AssetName = "Depósito a Prazo Santander",
+            Type = "Depósito",
+            Date = DateTime.Now.AddDays(22),
+            Value = 43.55M,
+            Description = "Juros Mensais",
+            Status = "Pendente",
+            StatusClass = "pending"
+        },
+        
+        // Fundos de Investimento
+        new PaymentModel {
+            AssetId = "FND001",
+            AssetName = "Fundo PPR Reforma Segura",
+            Type = "Fundo",
+            Date = DateTime.Now.AddDays(8),
+            Value = 262.50M,
+            Description = "Rendimento Mensal",
+            Status = "Pendente",
+            StatusClass = "pending"
+        },
+        new PaymentModel {
+            AssetId = "FND002",
+            AssetName = "Fundo Investimento Europeu",
+            Type = "Fundo",
+            Date = DateTime.Now.AddDays(12),
+            Value = 226.67M,
+            Description = "Rendimento Mensal",
+            Status = "Pendente",
+            StatusClass = "pending"
+        },
+        new PaymentModel {
+            AssetId = "FND003",
+            AssetName = "ETF MSCI World",
+            Type = "Fundo",
+            Date = DateTime.Now.AddDays(18),
+            Value = 108.52M,
+            Description = "Rendimento Trimestral",
+            Status = "Confirmado",
+            StatusClass = "confirmed"
+        },
+        
+        // Imóveis Arrendados
+        new PaymentModel {
+            AssetId = "IMV001",
+            AssetName = "Apartamento T2 Braga",
+            Type = "Imóvel",
+            Date = DateTime.Now.AddDays(2),
+            Value = 650.00M,
+            Description = "Renda Mensal",
+            Status = "Pendente",
+            StatusClass = "pending"
+        },
+        new PaymentModel {
+            AssetId = "IMV002",
+            AssetName = "Moradia T3 Guimarães",
+            Type = "Imóvel",
+            Date = DateTime.Now.AddDays(3),
+            Value = 550.00M,
+            Description = "Renda Mensal",
+            Status = "Pendente",
+            StatusClass = "pending"
+        },
+        new PaymentModel {
+            AssetId = "IMV003",
+            AssetName = "Loja Comercial Porto",
+            Type = "Imóvel",
+            Date = DateTime.Now.AddDays(7),
+            Value = 320.00M,
+            Description = "Renda Mensal",
+            Status = "Pendente",
+            StatusClass = "pending"
+        }
+    };
+    
+    public class PaymentModel
+    {
+        public string AssetId { get; set; } = string.Empty;
+        public string AssetName { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public decimal Value { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string StatusClass { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,33 @@
+﻿@page "/"
+@namespace Myapp.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema de Gestão de Ativos</title>
+    <base href="~/" />
+    <link href="css/site.css" rel="stylesheet" />
+</head>
+<body>
+<component type="typeof(App)" render-mode="ServerPrerendered" />
+
+<div id="blazor-error-ui" style="display:none;">
+    <environment include="Staging,Production">
+        Ocorreu um erro. Este aplicativo pode não responder até que seja recarregado.
+    </environment>
+    <environment include="Development">
+        Ocorreu uma exceção não tratada. Veja as ferramentas de desenvolvimento do navegador para detalhes.
+    </environment>
+    <a href="" class="reload">Recarregar</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+<script src="_framework/blazor.server.js"></script>
+</body>
+</html>

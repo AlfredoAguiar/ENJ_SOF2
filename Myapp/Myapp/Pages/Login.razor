@@ -1,0 +1,77 @@
+﻿@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.JSInterop
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-header">
+            <h2>Gestor de Ativos</h2>
+            <p>Entre com suas credenciais para acessar o sistema</p>
+        </div>
+        
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert-error">
+                <span class="alert-icon">!</span>
+                <span>@errorMessage</span>
+            </div>
+        }
+        
+        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" class="login-form">
+            <DataAnnotationsValidator />
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <InputText id="email" class="form-control" @bind-Value="loginModel.Email" placeholder="seu@email.com" />
+                <ValidationMessage For="@(() => loginModel.Email)" class="validation-message" />
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="Digite sua senha" />
+                <ValidationMessage For="@(() => loginModel.Password)" class="validation-message" />
+            </div>
+            
+            <div class="form-options">
+                <a href="/register" class="forgot-password">Não tem conta?</a>
+            </div>
+            
+            <button type="submit" class="login-button">Entrar</button>
+        </EditForm>
+        
+        <div class="login-footer">
+            <p>&copy; @DateTime.Now.Year - Sistema de Gestão de Ativos</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new LoginModel();
+    private string errorMessage = string.Empty;
+
+    private async Task HandleLogin()
+    {
+        // Aqui você implementará sua própria lógica de autenticação
+        // conectando-se ao seu backend ou serviço de autenticação
+        
+        // Por enquanto, apenas um placeholder para você implementar depois
+        errorMessage = "Implementação de autenticação pendente.";
+        
+        // Após autenticação bem-sucedida, você redirecionaria para a página inicial:
+        // NavigationManager.NavigateTo("/dashboard");
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Email é obrigatório")]
+        [EmailAddress(ErrorMessage = "Formato de email inválido")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Senha é obrigatória")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+}

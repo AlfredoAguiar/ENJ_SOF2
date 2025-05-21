@@ -1,0 +1,113 @@
+﻿@page "/register"
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-header">
+            <h2>Gestor de Ativos</h2>
+            <p>Crie sua conta para acessar o sistema</p>
+        </div>
+        
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert-error">
+                <span class="alert-icon">!</span>
+                <span>@errorMessage</span>
+            </div>
+        }
+        
+        <EditForm Model="@registerModel" OnValidSubmit="HandleRegistration" class="login-form">
+            <DataAnnotationsValidator />
+            
+            <div class="form-group">
+                <label for="name">Nome completo</label>
+                <InputText id="name" class="form-control" @bind-Value="registerModel.Name" placeholder="Seu nome completo" />
+                <ValidationMessage For="@(() => registerModel.Name)" class="validation-message" />
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <InputText id="email" class="form-control" @bind-Value="registerModel.Email" placeholder="seu@email.com" />
+                <ValidationMessage For="@(() => registerModel.Email)" class="validation-message" />
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group form-group-half">
+                    <label for="password">Senha</label>
+                    <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" placeholder="Escolha uma senha" />
+                    <ValidationMessage For="@(() => registerModel.Password)" class="validation-message" />
+                </div>
+                
+                <div class="form-group form-group-half">
+                    <label for="confirmPassword">Confirmar senha</label>
+                    <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" placeholder="Confirme a senha" />
+                    <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="validation-message" />
+                </div>
+            </div>
+            <br/>
+            <button type="submit" class="login-button">Criar conta</button>
+            
+            <div class="form-footer">
+                <p>Já possui uma conta? <a href="/login">Faça login</a></p>
+            </div>
+        </EditForm>
+        
+        <div class="login-footer">
+            <p>&copy; @DateTime.Now.Year - Sistema de Gestão de Ativos</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterModel registerModel = new RegisterModel();
+    private string errorMessage = string.Empty;
+
+    private async Task HandleRegistration()
+    {
+        // Aqui você implementará sua lógica de registro
+        // Normalmente inclui validações adicionais e envio de dados para um backend
+        
+        if (registerModel.Password != registerModel.ConfirmPassword)
+        {
+            errorMessage = "As senhas não coincidem.";
+            return;
+        }
+        
+        // Para demonstração, apenas simulamos o registro bem-sucedido
+        // Em um caso real, você enviaria os dados para um serviço de autenticação
+        
+        // Simular um atraso de processamento
+        await Task.Delay(1000);
+        
+        // Redirecionar para página de login após registro bem-sucedido
+        NavigationManager.NavigateTo("/login");
+    }
+
+    public class RegisterModel
+    {
+        [Required(ErrorMessage = "Nome é obrigatório")]
+        [StringLength(100, ErrorMessage = "O nome deve ter entre {2} e {1} caracteres.", MinimumLength = 3)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email é obrigatório")]
+        [EmailAddress(ErrorMessage = "Formato de email inválido")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Senha é obrigatória")]
+        [StringLength(100, ErrorMessage = "A senha deve ter pelo menos {2} caracteres.", MinimumLength = 6)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Confirmação de senha é obrigatória")]
+        [Compare("Password", ErrorMessage = "As senhas não coincidem")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Departamento é obrigatório")]
+        public string Department { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Você deve aceitar os termos para continuar")]
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Você deve aceitar os termos para continuar")]
+        public bool AcceptTerms { get; set; }
+    }
+}

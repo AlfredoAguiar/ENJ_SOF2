@@ -1,0 +1,603 @@
+﻿@page "/reports"
+@page "/reports/{requestedReportType}"
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+@using System.Globalization
+
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Gestão Ativos</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <div class="nav-icon dashboard-nav-icon"></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/portfolio" class="nav-item">
+                <div class="nav-icon portfolio-nav-icon"></div>
+                <span>Carteira</span>
+            </a>
+            <a href="/transactions" class="nav-item">
+                <div class="nav-icon transactions-nav-icon"></div>
+                <span>Transações</span>
+            </a>
+            <a href="/reports" class="nav-item active">
+                <div class="nav-icon reports-nav-icon"></div>
+                <span>Relatórios</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                <div class="nav-icon logout-icon"></div>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="dashboard-header">
+            <div class="dashboard-title">
+                <h1>Relatórios</h1>
+                <p>Visualize e baixe os relatórios gerados</p>
+            </div>
+            <div class="user-profile">
+                <span class="user-greeting">Olá, <strong>@userName</strong></span>
+                <button class="user-menu-button" @onclick="ToggleUserMenu">
+                    <div class="avatar">@userInitials</div>
+                    @if (showUserMenu)
+                    {
+                        <div class="user-menu">
+                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                        </div>
+                    }
+                </button>
+            </div>
+        </header>
+
+        <!-- Reports Content -->
+        <div class="reports-container">
+            @if (showGenerateForm)
+            {
+                <!-- Report Generation Section -->
+                <div class="report-generation-section">
+                    <div class="section-header">
+                        <h2>@GenerationTitle</h2>
+                        <button class="toggle-form-button" @onclick="ToggleGenerateForm">
+                            @(showGenerateForm ? "Esconder" : "Mostrar")
+                        </button>
+                    </div>
+                    <div class="report-generator-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tipo de Relatório</label>
+                                <select @bind="newReport.Type">
+                                    <option value="Fluxo de Caixa">Fluxo de Caixa</option>
+                                    <option value="Rendimento de Ativos">Rendimento de Ativos</option>
+                                    <option value="Análise de Despesas">Análise de Despesas</option>
+                                    <option value="Projeção Financeira">Projeção Financeira</option>
+                                    <option value="Impostos">Impostos</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Formato</label>
+                                <select @bind="newReport.Format">
+                                    <option value="PDF">PDF</option>
+                                    <option value="Excel">Excel</option>
+                                    <option value="CSV">CSV</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Período</label>
+                                <select @bind="selectedPeriod" @bind:after="UpdateDateRange">
+                                    <option value="ThisMonth">Este Mês</option>
+                                    <option value="LastMonth">Mês Passado</option>
+                                    <option value="LastQuarter">Último Trimestre</option>
+                                    <option value="ThisYear">Este Ano</option>
+                                    <option value="LastYear">Ano Passado</option>
+                                    <option value="Custom">Personalizado</option>
+                                </select>
+                            </div>
+                        </div>
+                        @if (selectedPeriod == "Custom")
+                        {
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>De:</label>
+                                    <input type="date" @bind="startDate" @bind:format="yyyy-MM-dd" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Até:</label>
+                                    <input type="date" @bind="endDate" @bind:format="yyyy-MM-dd" />
+                                </div>
+                            </div>
+                        }
+                        <div class="form-row">
+                            <button class="generate-report-button" @onclick="GenerateReport">
+                                <span class="button-icon">+</span> Gerar Relatório
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="collapsed-generation-section">
+                    <div class="section-header">
+                        <h2>Gerar Novo Relatório</h2>
+                        <button class="toggle-form-button" @onclick="ToggleGenerateForm">
+                            Mostrar
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <!-- Reports List -->
+            <div id="reports_header_section">
+                <h2 id="reports_main_title">Relatórios Disponíveis</h2>
+                <div class="reports-filter">
+                    <input type="text" placeholder="Pesquisar relatórios..." @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchReports" />
+                    <select @bind="selectedReportType" @bind:after="FilterReports">
+                        <option value="">Todos os Tipos</option>
+                        <option value="Fluxo de Caixa">Fluxo de Caixa</option>
+                        <option value="Rendimento de Ativos">Rendimento de Ativos</option>
+                        <option value="Análise de Despesas">Análise de Despesas</option>
+                        <option value="Projeção Financeira">Projeção Financeira</option>
+                        <option value="Impostos">Impostos</option>
+                    </select>
+                </div>
+            </div>
+
+            @if (isGeneratingReport)
+            {
+                <div class="generating-message">
+                    <div class="spinner"></div>
+                    <p>Gerando relatório, por favor aguarde...</p>
+                </div>
+            }
+
+            <div id="reports_table_wrapper">
+                <table id="reports_data_table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>Período</th>
+                            <th>Formato</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (filteredReports.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="7" class="no-reports-message">
+                                    Nenhum relatório encontrado com os filtros atuais.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var report in filteredReports)
+                            {
+                                <tr>
+                                    <td>@report.DateGenerated.ToString("dd/MM/yyyy")</td>
+                                    <td>@report.Name</td>
+                                    <td>@report.Type</td>
+                                    <td>@report.Period</td>
+                                    <td class="reports_format">@report.Format</td>
+                                    <td>
+                                        <span class="reports_status_badge reports_@report.Status.ToLower()">@report.Status</span>
+                                    </td>
+                                    <td class="reports_actions">
+                                        <button class="reports_btn reports_download" @onclick="() => DownloadReport(report.Id)" title="Baixar">↓</button>
+                                        <button class="reports_btn reports_delete" @onclick="() => DeleteReport(report.Id)" title="Excluir">×</button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteModal)
+{
+    <div class="modal-overlay">
+        <div class="modal delete-modal">
+            <div class="modal-header">
+                <h2>Confirmar Exclusão</h2>
+                <button class="close-button" @onclick="CloseModal">×</button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este relatório?</p>
+                <p><strong>@(reportToDelete?.Name)</strong></p>
+                <p>Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
+                <button class="delete-button" @onclick="ConfirmDeleteReport">Excluir</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Download Confirmation Modal -->
+@if (showDownloadModal)
+{
+    <div class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Download Iniciado</h2>
+                <button class="close-button" @onclick="CloseDownloadModal">×</button>
+            </div>
+            <div class="modal-body">
+                <p>O download do relatório <strong>@downloadingReport?.Name</strong> foi iniciado.</p>
+                <p>Caso o download não inicie automaticamente, clique no botão abaixo.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="action-button" @onclick="CloseDownloadModal">Fechar</button>
+                <button class="download-button" @onclick="ForceDownload">Baixar Novamente</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string RequestedReportType { get; set; }
+
+    private string userName = "João Silva";
+    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
+    private bool showUserMenu = false;
+    
+    // UI State
+    private bool showGenerateForm = false;
+    private bool isGeneratingReport = false;
+    
+    // Reports Management
+    private List<Report> reports = new List<Report>();
+    private List<Report> filteredReports = new List<Report>();
+    private string searchTerm = "";
+    private string selectedReportType = "";
+    private string selectedPeriod = "ThisMonth";
+    private DateTime startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    private DateTime endDate = DateTime.Now;
+    
+    // Modal States
+    private bool showDeleteModal = false;
+    private bool showDownloadModal = false;
+    private Report reportToDelete;
+    private Report downloadingReport;
+    private Report newReport = new Report();
+    
+    // Get dynamic title based on requested report type
+    private string GenerationTitle => string.IsNullOrEmpty(RequestedReportType) 
+        ? "Gerar Novo Relatório" 
+        : $"Gerar Relatório de {RequestedReportType}";
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // In a real app, we would load from ReportService
+        await LoadMockData();
+        
+        // Set filtered reports to all reports initially
+        filteredReports = new List<Report>(reports);
+        
+        // Initialize new report
+        newReport = new Report
+        {
+            Type = string.IsNullOrEmpty(RequestedReportType) ? "Fluxo de Caixa" : RequestedReportType,
+            Format = "PDF",
+            Status = "Pendente"
+        };
+        
+        // If report type is specified in URL, show the generation form
+        showGenerateForm = !string.IsNullOrEmpty(RequestedReportType);
+        
+        // If report type is specified, filter reports to show that type
+        if (!string.IsNullOrEmpty(RequestedReportType))
+        {
+            selectedReportType = RequestedReportType;
+            FilterReports();
+        }
+    }
+    
+    private async Task LoadMockData()
+    {
+        // This would typically come from a service in a real implementation
+        reports = new List<Report>
+        {
+            new Report 
+            { 
+                Id = 1, 
+                Name = "Fluxo de Caixa - Abril 2025", 
+                Type = "Fluxo de Caixa", 
+                Period = "Abril 2025",
+                Format = "PDF",
+                DateGenerated = new DateTime(2025, 5, 2),
+                Status = "Concluído"
+            },
+            new Report 
+            { 
+                Id = 2, 
+                Name = "Rendimento de Ativos - Q1 2025", 
+                Type = "Rendimento de Ativos", 
+                Period = "Q1 2025",
+                Format = "Excel",
+                DateGenerated = new DateTime(2025, 4, 15),
+                Status = "Concluído"
+            },
+            new Report 
+            { 
+                Id = 3, 
+                Name = "Análise de Despesas - Março 2025", 
+                Type = "Análise de Despesas", 
+                Period = "Março 2025",
+                Format = "PDF",
+                DateGenerated = new DateTime(2025, 4, 3),
+                Status = "Concluído"
+            },
+            new Report 
+            { 
+                Id = 4, 
+                Name = "Projeção Financeira - 2025", 
+                Type = "Projeção Financeira", 
+                Period = "Ano 2025",
+                Format = "Excel",
+                DateGenerated = new DateTime(2025, 1, 10),
+                Status = "Concluído"
+            },
+            new Report 
+            { 
+                Id = 5, 
+                Name = "Relatório de Impostos - 2024", 
+                Type = "Impostos", 
+                Period = "Ano 2024",
+                Format = "PDF",
+                DateGenerated = new DateTime(2025, 3, 20),
+                Status = "Concluído"
+            }
+        };
+    }
+    
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+    
+    private void ToggleGenerateForm()
+    {
+        showGenerateForm = !showGenerateForm;
+    }
+    
+    private void Logout()
+    {
+        // In a real app, implement logout logic
+        NavigationManager.NavigateTo("/login");
+    }
+    
+    private void UpdateDateRange()
+    {
+        // Set date range based on selected period
+        switch (selectedPeriod)
+        {
+            case "ThisMonth":
+                startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                endDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month));
+                break;
+            case "LastMonth":
+                var lastMonth = DateTime.Now.AddMonths(-1);
+                startDate = new DateTime(lastMonth.Year, lastMonth.Month, 1);
+                endDate = new DateTime(lastMonth.Year, lastMonth.Month, DateTime.DaysInMonth(lastMonth.Year, lastMonth.Month));
+                break;
+            case "LastQuarter":
+                int currentQuarter = (DateTime.Now.Month - 1) / 3 + 1;
+                int lastQuarter = currentQuarter - 1;
+                int year = DateTime.Now.Year;
+                if (lastQuarter < 1)
+                {
+                    lastQuarter = 4;
+                    year -= 1;
+                }
+                startDate = new DateTime(year, (lastQuarter - 1) * 3 + 1, 1);
+                endDate = new DateTime(year, lastQuarter * 3, DateTime.DaysInMonth(year, lastQuarter * 3));
+                break;
+            case "ThisYear":
+                startDate = new DateTime(DateTime.Now.Year, 1, 1);
+                endDate = new DateTime(DateTime.Now.Year, 12, 31);
+                break;
+            case "LastYear":
+                startDate = new DateTime(DateTime.Now.Year - 1, 1, 1);
+                endDate = new DateTime(DateTime.Now.Year - 1, 12, 31);
+                break;
+            case "Custom":
+                // Use the user-defined date range
+                break;
+        }
+    }
+    
+    private string GetPeriodName()
+    {
+        // Format the period name for the report based on selected period
+        switch (selectedPeriod)
+        {
+            case "ThisMonth":
+                return DateTime.Now.ToString("MMMM yyyy", new CultureInfo("pt-PT"));
+            case "LastMonth":
+                return DateTime.Now.AddMonths(-1).ToString("MMMM yyyy", new CultureInfo("pt-PT"));
+            case "LastQuarter":
+                int currentQuarter = (DateTime.Now.Month - 1) / 3 + 1;
+                int lastQuarter = currentQuarter - 1;
+                int year = DateTime.Now.Year;
+                if (lastQuarter < 1)
+                {
+                    lastQuarter = 4;
+                    year -= 1;
+                }
+                return $"Q{lastQuarter} {year}";
+            case "ThisYear":
+                return $"Ano {DateTime.Now.Year}";
+            case "LastYear":
+                return $"Ano {DateTime.Now.Year - 1}";
+            case "Custom":
+                if (startDate.Year == endDate.Year && startDate.Month == endDate.Month)
+                {
+                    return startDate.ToString("MMMM yyyy", new CultureInfo("pt-PT"));
+                }
+                else if (startDate.Year == endDate.Year)
+                {
+                    return $"{startDate.ToString("MMMM", new CultureInfo("pt-PT"))} a {endDate.ToString("MMMM yyyy", new CultureInfo("pt-PT"))}";
+                }
+                else
+                {
+                    return $"{startDate.ToString("MMMM yyyy", new CultureInfo("pt-PT"))} a {endDate.ToString("MMMM yyyy", new CultureInfo("pt-PT"))}";
+                }
+        }
+        return "";
+    }
+    
+    private void SearchReports()
+    {
+        ApplyFilters();
+    }
+    
+    private void FilterReports()
+    {
+        ApplyFilters();
+    }
+    
+    private void ApplyFilters()
+    {
+        filteredReports = reports.Where(r => 
+            (string.IsNullOrWhiteSpace(searchTerm) || 
+             r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             r.Type.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             r.Period.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(selectedReportType) || r.Type == selectedReportType)
+        ).ToList();
+    }
+    
+    private async Task GenerateReport()
+    {
+        try
+        {
+            // Show loading state
+            isGeneratingReport = true;
+            
+            // Create a new report
+            UpdateDateRange(); // Ensure date range is correct
+            
+            var reportPeriod = GetPeriodName();
+            var reportName = $"{newReport.Type} - {reportPeriod}";
+            
+            // Simulate report generation delay
+            await Task.Delay(1500); // In a real app, this would be the actual report generation process
+            
+            var report = new Report
+            {
+                Id = reports.Count > 0 ? reports.Max(r => r.Id) + 1 : 1,
+                Name = reportName,
+                Type = newReport.Type,
+                Period = reportPeriod,
+                Format = newReport.Format,
+                DateGenerated = DateTime.Now,
+                Status = "Concluído" // Assume it's completed immediately for simplicity
+            };
+            
+            // Add to reports collection
+            reports.Add(report);
+            
+            // Refresh filtered reports
+            ApplyFilters();
+            
+            // Collapse the form
+            showGenerateForm = false;
+            
+            // Auto-download the report
+            await Task.Delay(200); // Small delay before initiating download
+            DownloadReport(report.Id);
+        }
+        finally
+        {
+            // Hide loading state
+            isGeneratingReport = false;
+        }
+    }
+    
+    private void DownloadReport(int id)
+    {
+        downloadingReport = reports.FirstOrDefault(r => r.Id == id);
+        if (downloadingReport != null)
+        {
+            showDownloadModal = true;
+            // In a real app, this would trigger the actual download
+            // For demo purposes, we just show a modal
+        }
+    }
+    
+    private void ForceDownload()
+    {
+        // In a real app, this would re-trigger the download
+        // For demo purposes, we just close the modal
+        CloseDownloadModal();
+    }
+    
+    private void DeleteReport(int id)
+    {
+        reportToDelete = reports.FirstOrDefault(r => r.Id == id);
+        if (reportToDelete != null)
+        {
+            showDeleteModal = true;
+        }
+    }
+    
+    private void ConfirmDeleteReport()
+    {
+        if (reportToDelete != null)
+        {
+            // Remove the report
+            reports.Remove(reportToDelete);
+            
+            // Update filtered reports
+            filteredReports.Remove(reportToDelete);
+            
+            // Close modal
+            CloseModal();
+        }
+    }
+    
+    private void CloseModal()
+    {
+        showDeleteModal = false;
+    }
+    
+    private void CloseDownloadModal()
+    {
+        showDownloadModal = false;
+        downloadingReport = null;
+    }
+    
+    // Report class
+    public class Report
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string Period { get; set; }
+        public string Format { get; set; }
+        public DateTime DateGenerated { get; set; }
+        public string Status { get; set; } // "Pendente", "Concluído", "Erro"
+    }
+}

@@ -1,0 +1,56 @@
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\bin\Debug\net8.0\appsettings.Development.json
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\bin\Debug\net8.0\appsettings.json
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\bin\Debug\net8.0\Myapp.staticwebassets.runtime.json
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\bin\Debug\net8.0\Myapp.exe
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\bin\Debug\net8.0\Myapp.deps.json
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\bin\Debug\net8.0\Myapp.runtimeconfig.json
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\bin\Debug\net8.0\Myapp.dll
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\bin\Debug\net8.0\Myapp.pdb
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.AssemblyInfoInputs.cache
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.AssemblyInfo.cs
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.csproj.CoreCompileInputs.cache
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.RazorAssemblyInfo.cache
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.RazorAssemblyInfo.cs
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\staticwebassets.development.json
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\staticwebassets\msbuild.Myapp.Microsoft.AspNetCore.StaticWebAssets.props
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\staticwebassets\msbuild.build.Myapp.props
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.Myapp.props
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.Myapp.props
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\staticwebassets.pack.json
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\scopedcss\bundle\Myapp.styles.css
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.dll
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\refint\Myapp.dll
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.pdb
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\Myapp.genruntimeconfig.cache
+C:\Users\Duarte\RiderProjects\Myapp\Myapp\obj\Debug\net8.0\ref\Myapp.dll
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\bin\Debug\net8.0\appsettings.Development.json
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\bin\Debug\net8.0\appsettings.json
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\bin\Debug\net8.0\Myapp.staticwebassets.runtime.json
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\bin\Debug\net8.0\Myapp.exe
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\bin\Debug\net8.0\Myapp.deps.json
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\bin\Debug\net8.0\Myapp.runtimeconfig.json
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\bin\Debug\net8.0\Myapp.dll
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\bin\Debug\net8.0\Myapp.pdb
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.AssemblyInfoInputs.cache
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.AssemblyInfo.cs
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.csproj.CoreCompileInputs.cache
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.RazorAssemblyInfo.cache
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.RazorAssemblyInfo.cs
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\staticwebassets.development.json
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\staticwebassets\msbuild.Myapp.Microsoft.AspNetCore.StaticWebAssets.props
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\staticwebassets\msbuild.build.Myapp.props
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.Myapp.props
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.Myapp.props
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\staticwebassets.pack.json
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\scopedcss\bundle\Myapp.styles.css
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.dll
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\refint\Myapp.dll
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.pdb
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\Myapp.genruntimeconfig.cache
+C:\Users\diagu\OneDrive\Área de Trabalho\Myapp\Myapp\obj\Debug\net8.0\ref\Myapp.dll

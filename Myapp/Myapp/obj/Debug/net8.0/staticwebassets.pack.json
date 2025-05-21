@@ -1,0 +1,29 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\diagu\\OneDrive\\Área de Trabalho\\Myapp\\Myapp\\wwwroot\\css\\img.png",
+      "PackagePath": "staticwebassets\\css\\img.png"
+    },
+    {
+      "Id": "C:\\Users\\diagu\\OneDrive\\Área de Trabalho\\Myapp\\Myapp\\wwwroot\\css\\site.css",
+      "PackagePath": "staticwebassets\\css\\site.css"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.Myapp.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.Myapp.props",
+      "PackagePath": "build\\Myapp.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.Myapp.props",
+      "PackagePath": "buildMultiTargeting\\Myapp.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.Myapp.props",
+      "PackagePath": "buildTransitive\\Myapp.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

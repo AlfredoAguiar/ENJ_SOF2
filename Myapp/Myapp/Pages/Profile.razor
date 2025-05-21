@@ -1,0 +1,178 @@
+﻿@page "/profile"
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Gestão Ativos</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <div class="nav-icon dashboard-nav-icon"></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/portfolio" class="nav-item">
+                <div class="nav-icon portfolio-nav-icon"></div>
+                <span>Carteira</span>
+            </a>
+            <a href="/transactions" class="nav-item">
+                <div class="nav-icon transactions-nav-icon"></div>
+                <span>Transações</span>
+            </a>
+            <a href="/reports" class="nav-item">
+                <div class="nav-icon reports-nav-icon"></div>
+                <span>Relatórios</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                <div class="nav-icon logout-nav-icon"></div>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header with Breadcrumbs -->
+        <div class="page-header">
+            <div class="breadcrumbs">
+                <a href="/">Dashboard</a>
+                <span class="separator">/</span>
+                <span class="current">Meu Perfil</span>
+            </div>
+            <div class="user-profile">
+                <span class="user-greeting">Olá, <strong>@userProfile.Name</strong></span>
+                <button class="user-menu-button" @onclick="ToggleUserMenu">
+                    <div class="avatar">@userInitials</div>
+                    @if (showUserMenu)
+                    {
+                        <div class="user-menu">
+                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                        </div>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <!-- Page Title -->
+        <div class="page-title-actions">
+            <h1>Meu Perfil</h1>
+        </div>
+
+        <!-- Profile Overview -->
+        <div class="profile-overview">
+            <div class="profile-avatar">
+                <div class="avatar-large">@userInitials</div>
+                <button class="change-avatar-button">Alterar</button>
+            </div>
+            <div class="profile-info">
+                <h2>@userProfile.Name</h2>
+                <p class="profile-role">@userProfile.Role</p>
+                <p class="profile-member-since">Membro desde @userProfile.MemberSince.ToString("MMMM, yyyy")</p>
+            </div>
+        </div>
+
+        <!-- Personal Information -->
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2>Informações Pessoais</h2>
+                <button class="edit-button" @onclick="NavigateToEditProfile">
+                    <span class="edit-icon"></span>
+                    Editar
+                </button>
+            </div>
+            <div class="personal-info">
+                <div class="info-group">
+                    <label>Nome Completo</label>
+                    <p>@userProfile.Name</p>
+                </div>
+                <div class="info-group">
+                    <label>Email</label>
+                    <p>@userProfile.Email</p>
+                </div>
+                <div class="info-group">
+                    <label>Telemóvel</label>
+                    <p>@userProfile.Phone</p>
+                </div>
+                <div class="info-group">
+                    <label>Data de Nascimento</label>
+                    <p>@userProfile.Birthdate.ToString("dd/MM/yyyy")</p>
+                </div>
+                <div class="info-group">
+                    <label>Morada</label>
+                    <p>@userProfile.Address</p>
+                </div>
+                <div class="info-group">
+                    <label>NIF</label>
+                    <p>@userProfile.TaxNumber</p>
+                </div>
+            </div>
+            <div class="section-header">
+                <h2>Segurança</h2>
+                <button class="edit-button" @onclick="NavigateToChangePassword">
+                    <span class="password-icon"></span>
+                    Alterar Senha
+                </button>
+            </div>
+            <div class="security-info">
+                <p>A sua senha deve ser alterada regularmente para maior segurança. A última alteração foi realizada em @lastPasswordChange.ToString("dd/MM/yyyy").</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool showUserMenu = false;
+    private string userInitials => string.Join("", userProfile.Name.Split(' ').Select(n => n[0]));
+
+    private UserProfileModel userProfile = new UserProfileModel
+    {
+        Name = "João Silva",
+        Email = "joao.silva@exemplo.com",
+        Phone = "+351 912 345 678",
+        Birthdate = new DateTime(1985, 5, 15),
+        Address = "Rua das Flores, 123, 4700-000 Braga",
+        TaxNumber = "123456789",
+        Role = "Administrador",
+        MemberSince = new DateTime(2022, 3, 10)
+    };
+
+    private void NavigateToEditProfile()
+    {
+        // Navega para a página de edição de perfil
+        NavigationManager.NavigateTo("/profile/edit");
+    }
+
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+
+    private void Logout()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+    public class UserProfileModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public DateTime Birthdate { get; set; }
+        public string Address { get; set; } = string.Empty;
+        public string TaxNumber { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public DateTime MemberSince { get; set; }
+    }
+    private DateTime lastPasswordChange = DateTime.Now.AddMonths(-3);
+
+    private void NavigateToChangePassword()
+    {
+        // Navega para a página de alteração de senha
+        NavigationManager.NavigateTo("/profile/change-password");
+    }
+}
