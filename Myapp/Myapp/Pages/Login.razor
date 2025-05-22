@@ -1,8 +1,11 @@
 ﻿@page "/login"
 @using System.ComponentModel.DataAnnotations
+@using System.Net
 @using Microsoft.JSInterop
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@using WebApplication5.DTO
+@inject HttpClient Http
 
 <div class="login-page">
     <div class="login-container">
@@ -16,6 +19,14 @@
             <div class="alert-error">
                 <span class="alert-icon">!</span>
                 <span>@errorMessage</span>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert-success">
+                <span class="alert-icon">&#10003;</span> <!-- ícone de check -->
+                <span>@successMessage</span>
             </div>
         }
         
@@ -50,17 +61,41 @@
 @code {
     private LoginModel loginModel = new LoginModel();
     private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
 
     private async Task HandleLogin()
     {
-        // Aqui você implementará sua própria lógica de autenticação
-        // conectando-se ao seu backend ou serviço de autenticação
-        
-        // Por enquanto, apenas um placeholder para você implementar depois
-        errorMessage = "Implementação de autenticação pendente.";
-        
-        // Após autenticação bem-sucedida, você redirecionaria para a página inicial:
-        // NavigationManager.NavigateTo("/dashboard");
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore/login", loginModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+
+                
+                successMessage = "Login realizado com sucesso! Redirecionando...";
+                StateHasChanged();
+
+                await Task.Delay(2000); 
+                NavigationManager.NavigateTo("/");
+            }
+            else if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "Email ou senha incorretos.";
+            }
+            else
+            {
+                errorMessage = "Erro ao tentar fazer login.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro inesperado: {ex.Message}";
+        }
     }
 
     public class LoginModel

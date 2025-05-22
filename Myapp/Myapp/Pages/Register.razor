@@ -2,7 +2,9 @@
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-
+@using System.ComponentModel.DataAnnotations
+@using WebApplication5.DTO
+@inject HttpClient Http
 <div class="login-page">
     <div class="login-container">
         <div class="login-header">
@@ -63,26 +65,54 @@
 @code {
     private RegisterModel registerModel = new RegisterModel();
     private string errorMessage = string.Empty;
-
+    private string successMessage = string.Empty;
+    
     private async Task HandleRegistration()
     {
-        // Aqui você implementará sua lógica de registro
-        // Normalmente inclui validações adicionais e envio de dados para um backend
-        
-        if (registerModel.Password != registerModel.ConfirmPassword)
         {
-            errorMessage = "As senhas não coincidem.";
-            return;
+            errorMessage = "";
+            successMessage = string.Empty;
+            
+            if (registerModel.Password != registerModel.ConfirmPassword)
+            {
+                errorMessage = "As senhas não coincidem.";
+                return;
+            }
+
+            var newUser = new UtilizadoreDto
+            {
+                Id = Guid.NewGuid(),
+                Nome = registerModel.Name,
+                Email = registerModel.Email,
+                Senha = registerModel.Password, 
+                Cargo = "Utilizador",
+                PermissaoId = Guid.Parse("8a14aeb8-aaf8-4fcd-8d8a-a5cd1e5ec0fd")
+            };
+
+
+            try
+            {
+                var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore", newUser);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    successMessage = "Registo realizado com sucesso! Redirecionando...";
+                    StateHasChanged();
+
+                    await Task.Delay(2000); 
+                    NavigationManager.NavigateTo("/login");
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    errorMessage = $"Erro ao registrar usuário: {errorContent}";
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Exceção: {ex.Message}";
+            }
         }
-        
-        // Para demonstração, apenas simulamos o registro bem-sucedido
-        // Em um caso real, você enviaria os dados para um serviço de autenticação
-        
-        // Simular um atraso de processamento
-        await Task.Delay(1000);
-        
-        // Redirecionar para página de login após registro bem-sucedido
-        NavigationManager.NavigateTo("/login");
     }
 
     public class RegisterModel
@@ -102,12 +132,6 @@
         [Required(ErrorMessage = "Confirmação de senha é obrigatória")]
         [Compare("Password", ErrorMessage = "As senhas não coincidem")]
         public string ConfirmPassword { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Departamento é obrigatório")]
-        public string Department { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Você deve aceitar os termos para continuar")]
-        [Range(typeof(bool), "true", "true", ErrorMessage = "Você deve aceitar os termos para continuar")]
-        public bool AcceptTerms { get; set; }
+        
     }
 }

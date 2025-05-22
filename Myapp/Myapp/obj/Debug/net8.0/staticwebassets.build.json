@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "hWOjVUFuMbaCfMkOIg9IxO8ZRnvmkxUAHmFVaQhCkYQ=",
+  "Hash": "XnzHKyugj/oGYV6Ze0La1w34FC476/ybN/d58eDp6cg=",
   "Source": "Myapp",
   "BasePath": "_content/Myapp",
   "Mode": "Default",
@@ -10,17 +10,17 @@
     {
       "Name": "Myapp\\wwwroot",
       "Source": "Myapp",
-      "ContentRoot": "C:\\Users\\diagu\\OneDrive\\Área de Trabalho\\Myapp\\Myapp\\wwwroot\\",
+      "ContentRoot": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\Myapp\\Myapp\\wwwroot\\",
       "BasePath": "_content/Myapp",
       "Pattern": "**"
     }
   ],
   "Assets": [
     {
-      "Identity": "C:\\Users\\diagu\\OneDrive\\Área de Trabalho\\Myapp\\Myapp\\wwwroot\\css\\img.png",
+      "Identity": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\Myapp\\Myapp\\wwwroot\\css\\img.png",
       "SourceId": "Myapp",
       "SourceType": "Discovered",
-      "ContentRoot": "C:\\Users\\diagu\\OneDrive\\Área de Trabalho\\Myapp\\Myapp\\wwwroot\\",
+      "ContentRoot": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\Myapp\\Myapp\\wwwroot\\",
       "BasePath": "_content/Myapp",
       "RelativePath": "css/img.png",
       "AssetKind": "All",
@@ -36,10 +36,10 @@
       "OriginalItemSpec": "wwwroot\\css\\img.png"
     },
     {
-      "Identity": "C:\\Users\\diagu\\OneDrive\\Área de Trabalho\\Myapp\\Myapp\\wwwroot\\css\\site.css",
+      "Identity": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\Myapp\\Myapp\\wwwroot\\css\\site.css",
       "SourceId": "Myapp",
       "SourceType": "Discovered",
-      "ContentRoot": "C:\\Users\\diagu\\OneDrive\\Área de Trabalho\\Myapp\\Myapp\\wwwroot\\",
+      "ContentRoot": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\Myapp\\Myapp\\wwwroot\\",
       "BasePath": "_content/Myapp",
       "RelativePath": "css/site.css",
       "AssetKind": "All",
