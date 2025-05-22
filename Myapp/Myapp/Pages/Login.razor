@@ -6,6 +6,8 @@
 @inject IJSRuntime JSRuntime
 @using WebApplication5.DTO
 @inject HttpClient Http
+@inject UserStateService UserStateService
+
 
 <div class="login-page">
     <div class="login-container">
@@ -76,7 +78,8 @@
             {
                 var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
 
-                
+                UserStateService.UserId = user.Id;
+
                 successMessage = "Login realizado com sucesso! Redirecionando...";
                 StateHasChanged();
 
@@ -106,7 +109,6 @@
 
         [Required(ErrorMessage = "Senha é obrigatória")]
         public string Password { get; set; } = string.Empty;
-
-        public bool RememberMe { get; set; }
+        
     }
 }

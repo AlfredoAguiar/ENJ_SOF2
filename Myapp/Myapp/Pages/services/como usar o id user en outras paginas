@@ -1,0 +1,7 @@
+ Em outras páginas, injete o UserStateService para acessar o ID
+Por exemplo:
+
+
+@inject UserStateService UserStateService
+
+<p>Usuário logado: @UserStateService.UserId</p>
