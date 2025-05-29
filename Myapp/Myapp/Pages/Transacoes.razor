@@ -1,7 +1,11 @@
 ﻿@page "/transactions"
 @attribute [Authorize]
-@inject NavigationManager NavigationManager
+@using System.Net
 @using System.Globalization
+@using WebApplication5.DTO
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@inject UserStateService UserStateService
 
 <div class="app-container">
     <!-- Sidebar Navigation -->
@@ -10,7 +14,7 @@
             <h2>Gestão Ativos</h2>
         </div>
         <nav class="sidebar-nav">
-            <a href="/" class="nav-item">
+            <a href="/main" class="nav-item">
                 <div class="nav-icon dashboard-nav-icon"></div>
                 <span>Dashboard</span>
             </a>
@@ -37,145 +41,165 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Top Header -->
-        <header class="dashboard-header">
-            <div class="dashboard-title">
-                <h1>Transações</h1>
-                <p>Visão geral das suas transações</p>
+        @if (isLoading)
+        {
+            <div class="loading-container">
+                <div class="loading-spinner">
+                    <p>Carregando transações...</p>
+                </div>
             </div>
-            <div class="user-profile">
-                <span class="user-greeting">Olá, <strong>@userName</strong></span>
-                <button class="user-menu-button" @onclick="ToggleUserMenu">
-                    <div class="avatar">@userInitials</div>
-                    @if (showUserMenu)
-                    {
-                        <div class="user-menu">
-                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
-                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
-                        </div>
-                    }
-                </button>
-            </div>
-        </header>
+        }
+        else
+        {
+            <!-- Top Header -->
+            <header class="dashboard-header">
+                <div class="dashboard-title">
+                    <h1>Transações</h1>
+                    <p>Visão geral das suas transações</p>
+                </div>
+                <div class="user-profile">
+                    <span class="user-greeting">Olá, <strong>@userName</strong></span>
+                    <button class="user-menu-button" @onclick="ToggleUserMenu">
+                        <div class="avatar">@userInitials</div>
+                        @if (showUserMenu)
+                        {
+                            <div class="user-menu">
+                                <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                                <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                            </div>
+                        }
+                    </button>
+                </div>
+            </header>
 
-        <!-- Transactions Content -->
-        <div class="transactions-container">
-            <!-- Summary Cards -->
-            <div class="summary-cards">
-                <div class="summary-card">
-                    <div class="card-icon blue-icon">€</div>
-                    <div class="card-content">
-                        <h3>5 000,00 €</h3>
-                        <p>Receitas do Mês</p>
+            <!-- Transactions Content -->
+            <div class="transactions-container">
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="card-icon blue-icon">€</div>
+                        <div class="card-content">
+                            <h3>@monthlyIncome.ToString("N2", CultureInfo.GetCultureInfo("pt-PT")) €</h3>
+                            <p>Receitas do Mês</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon red-icon">€</div>
+                        <div class="card-content">
+                            <h3>@monthlyExpenses.ToString("N2", CultureInfo.GetCultureInfo("pt-PT")) €</h3>
+                            <p>Despesas do Mês</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon green-icon">€</div>
+                        <div class="card-content">
+                            <h3>@netFlow.ToString("N2", CultureInfo.GetCultureInfo("pt-PT")) €</h3>
+                            <p>Fluxo Líquido</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon yellow-icon">#</div>
+                        <div class="card-content">
+                            <h3>@pendingTransactions</h3>
+                            <p>Transações Pendentes</p>
+                        </div>
                     </div>
                 </div>
-                <div class="summary-card">
-                    <div class="card-icon red-icon">€</div>
-                    <div class="card-content">
-                        <h3>3 000,00 €</h3>
-                        <p>Despesas do Mês</p>
-                    </div>
-                </div>
-                <div class="summary-card">
-                    <div class="card-icon green-icon">€</div>
-                    <div class="card-content">
-                        <h3>2 000,00 €</h3>
-                        <p>Fluxo Líquido</p>
-                    </div>
-                </div>
-                <div class="summary-card">
-                    <div class="card-icon yellow-icon">#</div>
-                    <div class="card-content">
-                        <h3>5</h3>
-                        <p>Transações Pendentes</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Date Filter -->
-            <div class="date-filters">
-                <div class="date-range">
+                
+                <!-- Date Filter -->
+                <div class="date-filters">
                     <div class="date-range">
                         <div class="date-field">
                             <label>De:</label>
-                            <input type="date" @bind="startDate" @bind:format="yyyy-MM-dd" />
+                            <input type="date" @bind="startDate" @bind:format="yyyy-MM-dd" @bind:after="ApplyFilters" />
                         </div>
                         <div class="date-field">
                             <label>Até:</label>
-                            <input type="date" @bind="endDate" @bind:format="yyyy-MM-dd" />
+                            <input type="date" @bind="endDate" @bind:format="yyyy-MM-dd" @bind:after="ApplyFilters" />
                         </div>
                     </div>
+
+                    <div class="filter-controls">
+                        <select @bind="selectedType" @bind:after="ApplyFilters">
+                            <option value="">Todos os Tipos</option>
+                            <option value="Receita">Receitas</option>
+                            <option value="Despesa">Despesas</option>
+                            <option value="Investimento">Investimentos</option>
+                        </select>
+
+                        <select @bind="selectedStatus" @bind:after="ApplyFilters">
+                            <option value="">Todos os Status</option>
+                            <option value="Concluída">Concluídas</option>
+                            <option value="Pendente">Pendentes</option>
+                            <option value="Cancelada">Canceladas</option>
+                        </select>
+                    </div>
+
+                    <button class="add-button" @onclick="ShowAddModal">+ Nova Transação</button>
                 </div>
 
-                <div class="filter-controls">
-                    <select @bind="selectedType">
-                        <option value="">Todos os Tipos</option>
-                        <option value="Receita">Receitas</option>
-                        <option value="Despesa">Despesas</option>
-                        <option value="Transferência">Transferências</option>
-                    </select>
-
-                    <select @bind="selectedStatus">
-                        <option value="">Todos os Status</option>
-                        <option value="Concluída">Concluídas</option>
-                        <option value="Pendente">Pendentes</option>
-                        <option value="Cancelada">Canceladas</option>
-                    </select>
+                <!-- Transactions List -->
+                <div id="tx_header_section">
+                    <h2 id="tx_main_title">Transações Recentes</h2>
+                    <button id="tx_export_btn" @onclick="ExportTransactions">Exportar</button>
                 </div>
 
-                <button class="add-button" @onclick="ShowAddModal">+ Nova Transação</button>
+                <div id="tx_table_wrapper">
+                    <table id="tx_data_table">
+                        <thead>
+                            <tr>
+                                <th class="tx_col_date">Data</th>
+                                <th class="tx_col_desc">Descrição</th>
+                                <th class="tx_col_cat">Categoria</th>
+                                <th class="tx_col_asset">Ativo</th>
+                                <th class="tx_col_value">Valor</th>
+                                <th class="tx_col_status">Status</th>
+                                <th class="tx_col_actions">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (filteredTransactions.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="7" class="no-transactions-message">
+                                        Nenhuma transação encontrada com os filtros atuais.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var transaction in filteredTransactions)
+                                {
+                                    <tr class="tx_table_row">
+                                        <td class="tx_date">@transaction.Date.ToString("dd/MM/yyyy")</td>
+                                        <td class="tx_desc">@transaction.Description</td>
+                                        <td class="tx_cat">@transaction.Category</td>
+                                        <td class="tx_asset">@transaction.Asset</td>
+                                        <td class="tx_value @(transaction.Amount > 0 ? "tx_positive" : "tx_negative")">
+                                            @FormatCurrency(transaction.Amount)
+                                        </td>
+                                        <td class="tx_status">
+                                            <span class="tx_status_badge tx_@transaction.Status.ToLower()">@transaction.Status</span>
+                                        </td>
+                                        <td class="tx_actions">
+                                            <button class="tx_btn tx_view" @onclick="() => ViewTransactionDetails(transaction.Id)">
+                                                <i class="tx_icon_view"></i>
+                                            </button>
+                                            <button class="tx_btn tx_edit" @onclick="() => EditTransaction(transaction.Id)">
+                                                <i class="tx_icon_edit"></i>
+                                            </button>
+                                            <button class="tx_btn tx_delete" @onclick="() => DeleteTransaction(transaction.Id)">
+                                                <i class="tx_icon_delete"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
-
-            <!-- Transactions List -->
-            <div id="tx_header_section">
-        <h2 id="tx_main_title">Transações Recentes</h2>
-        <button id="tx_export_btn" @onclick="ExportTransactions">Exportar</button>
-    </div>
-
-    <div id="tx_table_wrapper">
-        <table id="tx_data_table">
-            <thead>
-                <tr>
-                    <th class="tx_col_date">Data</th>
-                    <th class="tx_col_desc">Descrição</th>
-                    <th class="tx_col_cat">Categoria</th>
-                    <th class="tx_col_asset">Ativo</th>
-                    <th class="tx_col_value">Valor</th>
-                    <th class="tx_col_status">Status</th>
-                    <th class="tx_col_actions">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var transaction in filteredTransactions)
-                {
-                    <tr class="tx_table_row">
-                        <td class="tx_date">@transaction.Date.ToString("dd/MM/yyyy")</td>
-                        <td class="tx_desc">@transaction.Description</td>
-                        <td class="tx_cat">@transaction.Category</td>
-                        <td class="tx_asset">@transaction.Asset</td>
-                        <td class="tx_value @(transaction.Amount > 0 ? "tx_positive" : "tx_negative")">
-                            @FormatCurrency(transaction.Amount)
-                        </td>
-                        <td class="tx_status">
-                            <span class="tx_status_badge tx_@transaction.Status.ToLower()">@transaction.Status</span>
-                        </td>
-                        <td class="tx_actions">
-                            <button class="tx_btn tx_view" @onclick="() => ViewTransactionDetails(transaction.Id)">
-                                <i class="tx_icon_view"></i>
-                            </button>
-                            <button class="tx_btn tx_edit" @onclick="() => EditTransaction(transaction.Id)">
-                                <i class="tx_icon_edit"></i>
-                            </button>
-                            <button class="tx_btn tx_delete" @onclick="() => DeleteTransaction(transaction.Id)">
-                                <i class="tx_icon_delete"></i>
-                            </button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-        </div>
+        }
     </div>
 </div>
 
@@ -194,8 +218,8 @@
                             @onclick="@(() => selectedTransactionType = "Receita")">Receita</button>
                     <button class="tab-button @(selectedTransactionType == "Despesa" ? "active" : "")" 
                             @onclick="@(() => selectedTransactionType = "Despesa")">Despesa</button>
-                    <button class="tab-button @(selectedTransactionType == "Transferência" ? "active" : "")" 
-                            @onclick="@(() => selectedTransactionType = "Transferência")">Transferência</button>
+                    <button class="tab-button @(selectedTransactionType == "Investimento" ? "active" : "")" 
+                            @onclick="@(() => selectedTransactionType = "Investimento")">Investimento</button>
                 </div>
                 
                 <!-- Common Fields for All Transaction Types -->
@@ -217,12 +241,10 @@
                 <div class="form-group">
                     <label>Conta/Ativo</label>
                     <select @bind="newTransaction.Asset">
-                        <option value="Conta Millennium">Conta Millennium</option>
-                        <option value="Conta Novobanco">Conta Novobanco</option>
-                        <option value="Fundo PPR Reforma Segura">Fundo PPR Reforma Segura</option>
-                        <option value="Fundo de Ações Europeias">Fundo de Ações Europeias</option>
-                        <option value="Apartamento T2 Braga">Apartamento T2 Braga</option>
-                        <option value="Loja Comercial Porto">Loja Comercial Porto</option>
+                        @foreach (var asset in availableAssets)
+                        {
+                            <option value="@asset">@asset</option>
+                        }
                     </select>
                 </div>
                 
@@ -232,8 +254,9 @@
                     {
                         <select @bind="newTransaction.Category">
                             <option value="Salário">Salário</option>
-                            <option value="Investimentos">Investimentos</option>
+                            <option value="Rendimentos">Rendimentos</option>
                             <option value="Rendas">Rendas</option>
+                            <option value="Dividendos">Dividendos</option>
                             <option value="Outros">Outros</option>
                         </select>
                     }
@@ -246,33 +269,20 @@
                             <option value="Lazer">Lazer</option>
                             <option value="Saúde">Saúde</option>
                             <option value="Educação">Educação</option>
+                            <option value="Manutenção">Manutenção</option>
                             <option value="Outros">Outros</option>
                         </select>
                     }
                     else
                     {
                         <select @bind="newTransaction.Category">
-                            <option value="Transferência Interna">Transferência Interna</option>
-                            <option value="Depósito">Depósito</option>
-                            <option value="Levantamento">Levantamento</option>
+                            <option value="Depósito a Prazo">Depósito a Prazo</option>
+                            <option value="Fundo de Investimento">Fundo de Investimento</option>
+                            <option value="Imóvel">Imóvel</option>
+                            <option value="Outros">Outros</option>
                         </select>
                     }
                 </div>
-                
-                @if (selectedTransactionType == "Transferência")
-                {
-                    <div class="form-group">
-                        <label>Conta/Ativo Destino</label>
-                        <select @bind="newTransaction.DestinationAsset">
-                            <option value="Conta Millennium">Conta Millennium</option>
-                            <option value="Conta Novobanco">Conta Novobanco</option>
-                            <option value="Fundo PPR Reforma Segura">Fundo PPR Reforma Segura</option>
-                            <option value="Fundo de Ações Europeias">Fundo de Ações Europeias</option>
-                            <option value="Apartamento T2 Braga">Apartamento T2 Braga</option>
-                            <option value="Loja Comercial Porto">Loja Comercial Porto</option>
-                        </select>
-                    </div>
-                }
                 
                 <div class="form-group">
                     <label>Status</label>
@@ -319,13 +329,21 @@
 }
 
 @code {
-    private string userName = "João Silva";
+    private bool isLoading = true;
+    private string userName = "Utilizador";
     private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
     private bool showUserMenu = false;
+    
+    // Summary Statistics
+    private decimal monthlyIncome = 0;
+    private decimal monthlyExpenses = 0;
+    private decimal netFlow = 0;
+    private int pendingTransactions = 0;
     
     // Transaction Management
     private List<Transaction> transactions = new List<Transaction>();
     private List<Transaction> filteredTransactions = new List<Transaction>();
+    private List<string> availableAssets = new List<string>();
     private string searchTerm = "";
     private string selectedType = "";
     private string selectedStatus = "";
@@ -340,57 +358,264 @@
     private Transaction newTransaction = new Transaction();
     private Transaction transactionToDelete;
     
+    // Financial Data
+    private List<CarteiraDto> userCarteiras = new List<CarteiraDto>();
+    private List<DepositoDto> depositos = new List<DepositoDto>();
+    private List<FundosInvestimentoDto> fundos = new List<FundosInvestimentoDto>();
+    private List<ImoveisArrendamentoDto> imoveis = new List<ImoveisArrendamentoDto>();
+    
     protected override async Task OnInitializedAsync()
     {
-        // In a real app, we would load from TransactionService
-        await LoadMockData();
-        
-        // Set filtered transactions to all transactions initially
-        filteredTransactions = new List<Transaction>(transactions);
+        await LoadData();
+        ApplyFilters();
     }
-    
-    private async Task LoadMockData()
+
+    private async Task LoadData()
     {
-        // This would typically come from a service in a real implementation
-        transactions = new List<Transaction>
+        try
         {
-            new Transaction 
-            { 
-                Id = 1, 
-                Description = "Salário", 
-                Category = "Salário", 
-                Amount = 2500.00m, 
-                Date = new DateTime(2025, 5, 6),
-                Asset = "Conta Millennium",
-                Status = "Concluída",
-                Type = "Receita",
-                Notes = "Salário mensal da empresa XYZ"
-            },
-            new Transaction 
-            { 
-                Id = 2, 
-                Description = "Supermercado", 
-                Category = "Alimentação", 
-                Amount = -120.00m, 
-                Date = new DateTime(2025, 5, 11),
-                Asset = "Conta Novobanco",
-                Status = "Concluída",
-                Type = "Despesa",
-                Notes = "Compras semanais"
-            },
-            new Transaction 
-            { 
-                Id = 3, 
-                Description = "Renda", 
-                Category = "Habitação", 
-                Amount = -800.00m, 
-                Date = new DateTime(2025, 5, 16),
-                Asset = "Conta Millennium",
-                Status = "Pendente",
-                Type = "Despesa",
-                Notes = "Pagamento da renda do apartamento"
+            isLoading = true;
+            StateHasChanged();
+
+            // Carregar dados do usuário
+            await LoadUserData();
+
+            // Carregar dados financeiros
+            await LoadFinancialData();
+
+            // Gerar transações baseadas nos dados reais
+            await GenerateTransactionsFromData();
+
+            // Calcular estatísticas
+            CalculateStatistics();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar dados: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUserData()
+    {
+        try
+        {
+            if (UserStateService.UserId != Guid.Empty)
+            {
+                var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+                    if (user != null)
+                    {
+                        userName = user.Nome ?? "Utilizador";
+                    }
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar dados do usuário: {ex.Message}");
+        }
+    }
+
+    private async Task LoadFinancialData()
+    {
+        try
+        {
+            // Carregar carteiras do usuário
+            var carteirasResponse = await Http.GetAsync("http://localhost:5189/api/Carteira");
+            if (carteirasResponse.IsSuccessStatusCode)
+            {
+                var allCarteiras = await carteirasResponse.Content.ReadFromJsonAsync<List<CarteiraDto>>();
+                userCarteiras = allCarteiras?.Where(c => c.UtilizadorId == UserStateService.UserId).ToList() ?? new List<CarteiraDto>();
+            }
+
+            // Carregar depósitos
+            var depositosResponse = await Http.GetAsync("http://localhost:5189/api/Deposito");
+            if (depositosResponse.IsSuccessStatusCode)
+            {
+                depositos = await depositosResponse.Content.ReadFromJsonAsync<List<DepositoDto>>() ?? new List<DepositoDto>();
+            }
+
+            // Carregar fundos
+            var fundosResponse = await Http.GetAsync("http://localhost:5189/api/FundosInvestimentos");
+            if (fundosResponse.IsSuccessStatusCode)
+            {
+                fundos = await fundosResponse.Content.ReadFromJsonAsync<List<FundosInvestimentoDto>>() ?? new List<FundosInvestimentoDto>();
+            }
+
+            // Carregar imóveis
+            var imoveisResponse = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
+            if (imoveisResponse.IsSuccessStatusCode)
+            {
+                imoveis = await imoveisResponse.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>() ?? new List<ImoveisArrendamentoDto>();
+            }
+
+            // Construir lista de ativos disponíveis
+            BuildAvailableAssets();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar dados financeiros: {ex.Message}");
+        }
+    }
+
+    private void BuildAvailableAssets()
+    {
+        availableAssets.Clear();
+        
+        // Adicionar depósitos
+        foreach (var deposito in depositos)
+        {
+            availableAssets.Add($"Depósito {deposito.Banco}");
+        }
+
+        // Adicionar fundos
+        foreach (var fundo in fundos)
+        {
+            availableAssets.Add(fundo.Nome ?? "Fundo de Investimento");
+        }
+
+        // Adicionar imóveis
+        foreach (var imovel in imoveis)
+        {
+            availableAssets.Add(imovel.Designacao ?? "Imóvel");
+        }
+
+        // Adicionar contas genéricas se não houver ativos
+        if (!availableAssets.Any())
+        {
+            availableAssets.AddRange(new[] { "Conta Corrente", "Conta Poupança", "Carteira" });
+        }
+    }
+
+    private async Task GenerateTransactionsFromData()
+    {
+        transactions.Clear();
+        int transactionId = 1;
+
+        // Gerar transações de investimentos iniciais (carteiras)
+        foreach (var carteira in userCarteiras)
+        {
+            transactions.Add(new Transaction
+            {
+                Id = transactionId++,
+                Description = "Investimento Inicial",
+                Category = "Investimento",
+                Amount = (decimal)carteira.Montante,
+                Date = carteira.DataInicio,
+                Asset = "Carteira de Investimentos",
+                Status = "Concluída",
+                Type = "Investimento",
+                Notes = "Investimento inicial na carteira"
+            });
+        }
+
+        // Gerar transações de rendimentos de depósitos
+        foreach (var deposito in depositos)
+        {
+            var monthlyInterest = (decimal)deposito.Montante * (decimal)deposito.TaxaJuros / 100 / 12;
+            
+            // Gerar rendimentos dos últimos 3 meses
+            for (int i = 1; i <= 3; i++)
+            {
+                transactions.Add(new Transaction
+                {
+                    Id = transactionId++,
+                    Description = $"Juros de Depósito - {deposito.Banco}",
+                    Category = "Rendimentos",
+                    Amount = monthlyInterest,
+                    Date = DateTime.Now.AddMonths(-i).AddDays(Random.Shared.Next(1, 28)),
+                    Asset = $"Depósito {deposito.Banco}",
+                    Status = i == 1 ? "Pendente" : "Concluída",
+                    Type = "Receita",
+                    Notes = $"Rendimento mensal do depósito {deposito.NumeroConta}"
+                });
+            }
+        }
+
+        // Gerar transações de rendas de imóveis
+        foreach (var imovel in imoveis)
+        {
+            // Gerar rendas dos últimos 3 meses
+            for (int i = 1; i <= 3; i++)
+            {
+                transactions.Add(new Transaction
+                {
+                    Id = transactionId++,
+                    Description = $"Renda - {imovel.Designacao}",
+                    Category = "Rendas",
+                    Amount = (decimal)imovel.ValorRenda,
+                    Date = DateTime.Now.AddMonths(-i).AddDays(Random.Shared.Next(1, 5)),
+                    Asset = imovel.Designacao ?? "Imóvel",
+                    Status = i == 1 ? "Pendente" : "Concluída",
+                    Type = "Receita",
+                    Notes = $"Renda mensal do imóvel"
+                });
+
+            // Gerar algumas despesas de manutenção
+            if (Random.Shared.Next(1, 4) == 1) // 25% de chance
+            {
+                transactions.Add(new Transaction
+                {
+                    Id = transactionId++,
+                    Description = $"Manutenção - {imovel.Designacao}",
+                    Category = "Manutenção",
+                    Amount = -(decimal)imovel.TaxaCondominio - Random.Shared.Next(50, 200),
+                    Date = DateTime.Now.AddMonths(-i).AddDays(Random.Shared.Next(10, 25)),
+                    Asset = imovel.Designacao ?? "Imóvel",
+                    Status = "Concluída",
+                    Type = "Despesa",
+                    Notes = "Despesas de manutenção do imóvel"
+                });
+            }
+        }
+        }
+
+        // Gerar algumas transações de exemplo adicionais
+        var sampleTransactions = new[]
+        {
+            new { Desc = "Salário", Cat = "Salário", Amount = 2500m, Type = "Receita" },
+            new { Desc = "Supermercado", Cat = "Alimentação", Amount = -120m, Type = "Despesa" },
+            new { Desc = "Combustível", Cat = "Transporte", Amount = -60m, Type = "Despesa" },
+            new { Desc = "Restaurante", Cat = "Lazer", Amount = -45m, Type = "Despesa" }
         };
+
+        foreach (var sample in sampleTransactions)
+        {
+            transactions.Add(new Transaction
+            {
+                Id = transactionId++,
+                Description = sample.Desc,
+                Category = sample.Cat,
+                Amount = sample.Amount,
+                Date = DateTime.Now.AddDays(-Random.Shared.Next(1, 30)),
+                Asset = availableAssets.FirstOrDefault() ?? "Conta Corrente",
+                Status = "Concluída",
+                Type = sample.Type,
+                Notes = ""
+            });
+        }
+    }
+
+    private void CalculateStatistics()
+    {
+        var currentMonth = DateTime.Now.Month;
+        var currentYear = DateTime.Now.Year;
+
+        var monthlyTransactions = transactions.Where(t => 
+            t.Date.Month == currentMonth && 
+            t.Date.Year == currentYear).ToList();
+
+        monthlyIncome = monthlyTransactions.Where(t => t.Amount > 0).Sum(t => t.Amount);
+        monthlyExpenses = Math.Abs(monthlyTransactions.Where(t => t.Amount < 0).Sum(t => t.Amount));
+        netFlow = monthlyIncome - monthlyExpenses;
+        pendingTransactions = transactions.Count(t => t.Status == "Pendente");
     }
     
     private void ToggleUserMenu()
@@ -400,13 +625,8 @@
     
     private void Logout()
     {
-        // In a real app, implement logout logic
-        NavigationManager.NavigateTo("/login");
-    }
-    
-    private void SearchTransactions()
-    {
-        ApplyFilters();
+        UserStateService.UserId = Guid.Empty;
+        NavigationManager.NavigateTo("/");
     }
     
     private void ApplyFilters()
@@ -419,7 +639,7 @@
             (string.IsNullOrWhiteSpace(selectedType) || t.Type == selectedType) &&
             (string.IsNullOrWhiteSpace(selectedStatus) || t.Status == selectedStatus) &&
             (t.Date >= startDate && t.Date <= endDate)
-        ).ToList();
+        ).OrderByDescending(t => t.Date).ToList();
     }
     
     private void ShowAddModal()
@@ -430,30 +650,28 @@
         { 
             Type = selectedTransactionType,
             Date = DateTime.Now,
-            Status = "Pendente"
+            Status = "Pendente",
+            Asset = availableAssets.FirstOrDefault() ?? ""
         };
         showAddModal = true;
     }
     
     private void EditTransaction(int id)
     {
-        // Find the transaction to edit
         var transaction = transactions.FirstOrDefault(t => t.Id == id);
         if (transaction != null)
         {
             editingTransactionId = id;
             selectedTransactionType = transaction.Type;
             
-            // Create a clone of the transaction for editing
             newTransaction = new Transaction
             {
                 Id = transaction.Id,
                 Description = transaction.Description,
                 Category = transaction.Category,
-                Amount = transaction.Amount,
+                Amount = Math.Abs(transaction.Amount), // Always show positive for editing
                 Date = transaction.Date,
                 Asset = transaction.Asset,
-                DestinationAsset = transaction.DestinationAsset,
                 Status = transaction.Status,
                 Type = transaction.Type,
                 Notes = transaction.Notes
@@ -465,8 +683,6 @@
     
     private void ViewTransactionDetails(int id)
     {
-        // In a real app, navigate to transaction details page or show a modal
-        // For this example, we'll just edit it
         EditTransaction(id);
     }
     
@@ -483,20 +699,15 @@
     {
         if (transactionToDelete != null)
         {
-            // Remove the transaction
             transactions.Remove(transactionToDelete);
-            
-            // Update filtered transactions
-            filteredTransactions.Remove(transactionToDelete);
-            
-            // Close modal
+            ApplyFilters();
+            CalculateStatistics();
             CloseModal();
         }
     }
     
     private void SaveTransaction()
     {
-        // Ensure transaction type is set
         newTransaction.Type = selectedTransactionType;
         
         // Set amount sign based on transaction type
@@ -504,20 +715,18 @@
         {
             newTransaction.Amount = -newTransaction.Amount;
         }
-        else if (selectedTransactionType == "Receita" && newTransaction.Amount < 0)
+        else if ((selectedTransactionType == "Receita" || selectedTransactionType == "Investimento") && newTransaction.Amount < 0)
         {
             newTransaction.Amount = Math.Abs(newTransaction.Amount);
         }
         
         if (editingTransactionId == 0)
         {
-            // Add new transaction
             newTransaction.Id = transactions.Count > 0 ? transactions.Max(t => t.Id) + 1 : 1;
             transactions.Add(newTransaction);
         }
         else
         {
-            // Update existing transaction
             var index = transactions.FindIndex(t => t.Id == editingTransactionId);
             if (index >= 0)
             {
@@ -525,10 +734,8 @@
             }
         }
         
-        // Refresh filtered transactions
         ApplyFilters();
-        
-        // Close modal
+        CalculateStatistics();
         CloseModal();
     }
     
@@ -541,8 +748,8 @@
     
     private void ExportTransactions()
     {
-        // In a real app, implement export logic
-        // For now, just show an alert or something similar
+        // Em uma implementação real, isso geraria um arquivo CSV/Excel
+        Console.WriteLine("Exportando transações...");
     }
     
     private string FormatCurrency(decimal value)
@@ -554,14 +761,34 @@
     public class Transaction
     {
         public int Id { get; set; }
-        public string Description { get; set; }
-        public string Category { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public DateTime Date { get; set; }
-        public string Asset { get; set; }
-        public string DestinationAsset { get; set; } // For transfers
-        public string Status { get; set; } // "Concluída", "Pendente", "Cancelada"
-        public string Type { get; set; } // "Receita", "Despesa", "Transferência"
-        public string Notes { get; set; }
+        public string Asset { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty; // "Concluída", "Pendente", "Cancelada"
+        public string Type { get; set; } = string.Empty; // "Receita", "Despesa", "Investimento"
+        public string Notes { get; set; } = string.Empty;
     }
 }
+
+<style>
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 50vh;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .no-transactions-message {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+        font-style: italic;
+    }
+</style>

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\diagu\\RiderProjects\\ES_2\\ES_2.csproj": {}
+    "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\ES_2.csproj": {}
   },
   "projects": {
-    "C:\\Users\\diagu\\RiderProjects\\ES_2\\ES_2.csproj": {
+    "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\ES_2.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\diagu\\RiderProjects\\ES_2\\ES_2.csproj",
+        "projectUniqueName": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\ES_2.csproj",
         "projectName": "ES_2",
-        "projectPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\ES_2.csproj",
+        "projectPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\ES_2.csproj",
         "packagesPath": "C:\\Users\\diagu\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\obj\\",
+        "outputPath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\diagu\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -42,6 +42,12 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
+          "dependencies": {
+            "System.IdentityModel.Tokens.Jwt": {
+              "target": "Package",
+              "version": "[8.11.0, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

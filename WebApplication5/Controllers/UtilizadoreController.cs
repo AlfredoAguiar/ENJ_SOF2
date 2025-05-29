@@ -4,6 +4,11 @@ using WebApplication1.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication5.DTO;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.Extensions.Options;
 
 namespace WebApplication1.Controllers
 {
@@ -13,11 +18,13 @@ namespace WebApplication1.Controllers
     {
         private readonly Dbes2 _context;
         private readonly IPasswordHasher<Utilizadore> _passwordHasher;
+        private readonly JwtSettings _jwtSettings;
  
-        public UtilizadoreController(Dbes2 context, IPasswordHasher<Utilizadore> passwordHasher)
+        public UtilizadoreController(Dbes2 context, IPasswordHasher<Utilizadore> passwordHasher,IOptions<JwtSettings> jwtSettings)
         {
             _context = context;
             _passwordHasher = passwordHasher;
+            _jwtSettings = jwtSettings.Value;
         }
         // GET: api/Utilizadore
         [HttpGet]
@@ -181,18 +188,47 @@ namespace WebApplication1.Controllers
                 return Unauthorized("Email ou senha inválidos.");
             }
 
+            var token = GenerateJwtToken(user);
+
             var response = new LoginResponse
             {
+                Token = token,
                 Id = user.Id,
                 Email = user.Email,
-                Name = user.Nome
+                Name = user.Nome, 
+                Cargo = user.Cargo,
+                Nome = user.Nome,
             };
 
             return Ok(response);
         }
 
-    
+        private string GenerateJwtToken(Utilizadore user)
+        {
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+                new Claim("id", user.Id.ToString()),
+                new Claim("cargo", user.Cargo),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+            if (_jwtSettings == null)
+                throw new InvalidOperationException("JwtSettings não foi inicializado.");
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _jwtSettings.Issuer,
+                audience: _jwtSettings.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes),
+                signingCredentials: creds);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
     }
+    
 }
 
 

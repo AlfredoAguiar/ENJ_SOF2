@@ -1,6 +1,8 @@
 ﻿@page "/profile"
-@attribute [Authorize]
+@using WebApplication5.DTO
 @inject NavigationManager NavigationManager
+@inject HttpClient Http
+@inject UserStateService UserStateService
 
 <div class="app-container">
     <!-- Sidebar Navigation -->
@@ -9,7 +11,7 @@
             <h2>Gestão Ativos</h2>
         </div>
         <nav class="sidebar-nav">
-            <a href="/" class="nav-item">
+            <a href="/dashboard" class="nav-item">
                 <div class="nav-icon dashboard-nav-icon"></div>
                 <span>Dashboard</span>
             </a>
@@ -36,115 +38,236 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Top Header with Breadcrumbs -->
-        <div class="page-header">
-            <div class="breadcrumbs">
-                <a href="/">Dashboard</a>
-                <span class="separator">/</span>
-                <span class="current">Meu Perfil</span>
+        @if (isLoading)
+        {
+            <div class="loading-container">
+                <div class="loading-spinner">
+                    <p>Carregando perfil...</p>
+                </div>
             </div>
-            <div class="user-profile">
-                <span class="user-greeting">Olá, <strong>@userProfile.Name</strong></span>
-                <button class="user-menu-button" @onclick="ToggleUserMenu">
-                    <div class="avatar">@userInitials</div>
-                    @if (showUserMenu)
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-container">
+                <div class="alert-error">
+                    <span class="alert-icon">!</span>
+                    <span>@errorMessage</span>
+                </div>
+                <button @onclick="LoadUserProfile" class="retry-button">Tentar Novamente</button>
+            </div>
+        }
+        else if (userProfile != null)
+        {
+            <!-- Top Header with Breadcrumbs -->
+            <div class="page-header">
+                <div class="breadcrumbs">
+                    <a href="/dashboard">Dashboard</a>
+                    <span class="separator">/</span>
+                    <span class="current">Meu Perfil</span>
+                </div>
+                <div class="user-profile">
+                    <span class="user-greeting">Olá, <strong>@userProfile.Name</strong></span>
+                    <button class="user-menu-button" @onclick="ToggleUserMenu">
+                        <div class="avatar">@userInitials</div>
+                        @if (showUserMenu)
+                        {
+                            <div class="user-menu">
+                                <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                                <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                            </div>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            <!-- Page Title -->
+            <div class="page-title-actions">
+                <h1>Meu Perfil</h1>
+            </div>
+
+            <!-- Profile Overview -->
+            <div class="profile-overview">
+                <div class="profile-avatar">
+                    <div class="avatar-large">@userInitials</div>
+                </div>
+                <div class="profile-info">
+                    <h2>@userProfile.Name</h2>
+                    <p class="profile-role">@GetRoleDisplayName(userProfile.Role)</p>
+                    <p class="profile-member-since">ID: @userProfile.Id.ToString("N")[..8]...</p>
+                </div>
+            </div>
+
+            <!-- Personal Information -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>Informações Pessoais</h2>
+                </div>
+                <div class="personal-info">
+                    <div class="info-group">
+                        <label>Nome Completo</label>
+                        <p>@userProfile.Name</p>
+                    </div>
+                    <div class="info-group">
+                        <label>Email</label>
+                        <p>@userProfile.Email</p>
+                    </div>
+                    <div class="info-group">
+                        <label>Cargo</label>
+                        <p>@GetRoleDisplayName(userProfile.Role)</p>
+                    </div>
+                    <div class="info-group">
+                        <label>ID do Utilizador</label>
+                        <p>@userProfile.Id</p>
+                    </div>
+                    @if (userProfile.PermissaoId.HasValue)
                     {
-                        <div class="user-menu">
-                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
-                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                        <div class="info-group">
+                            <label>ID da Permissão</label>
+                            <p>@userProfile.PermissaoId</p>
                         </div>
                     }
-                </button>
+                </div>
+                
+                <!-- Security Section -->
+                <div class="section-header">
+                    <h2>Segurança</h2>
+                    <button class="edit-button" @onclick="NavigateToChangePassword">
+                        <span class="password-icon"></span>
+                        Alterar Senha
+                    </button>
+                </div>
+                <div class="security-info">
+                    <p>A sua senha deve ser alterada regularmente para maior segurança.</p>
+                    <p><strong>Importante:</strong> Mantenha suas credenciais seguras e não as compartilhe com terceiros.</p>
+                    <p><strong>Última alteração:</strong> Informação não disponível</p>
+                </div>
             </div>
-        </div>
 
-        <!-- Page Title -->
-        <div class="page-title-actions">
-            <h1>Meu Perfil</h1>
-        </div>
-
-        <!-- Profile Overview -->
-        <div class="profile-overview">
-            <div class="profile-avatar">
-                <div class="avatar-large">@userInitials</div>
-                <button class="change-avatar-button">Alterar</button>
-            </div>
-            <div class="profile-info">
-                <h2>@userProfile.Name</h2>
-                <p class="profile-role">@userProfile.Role</p>
-                <p class="profile-member-since">Membro desde @userProfile.MemberSince.ToString("MMMM, yyyy")</p>
-            </div>
-        </div>
-
-        <!-- Personal Information -->
-        <div class="dashboard-section">
-            <div class="section-header">
-                <h2>Informações Pessoais</h2>
-                <button class="edit-button" @onclick="NavigateToEditProfile">
-                    <span class="edit-icon"></span>
-                    Editar
-                </button>
-            </div>
-            <div class="personal-info">
-                <div class="info-group">
-                    <label>Nome Completo</label>
-                    <p>@userProfile.Name</p>
+            <!-- Account Information -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>Informações da Conta</h2>
                 </div>
-                <div class="info-group">
-                    <label>Email</label>
-                    <p>@userProfile.Email</p>
-                </div>
-                <div class="info-group">
-                    <label>Telemóvel</label>
-                    <p>@userProfile.Phone</p>
-                </div>
-                <div class="info-group">
-                    <label>Data de Nascimento</label>
-                    <p>@userProfile.Birthdate.ToString("dd/MM/yyyy")</p>
-                </div>
-                <div class="info-group">
-                    <label>Morada</label>
-                    <p>@userProfile.Address</p>
-                </div>
-                <div class="info-group">
-                    <label>NIF</label>
-                    <p>@userProfile.TaxNumber</p>
+                <div class="account-info">
+                    <div class="info-row">
+                        <div class="info-item">
+                            <label>Status da Conta</label>
+                            <span class="status-badge active">Ativa</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Tipo de Utilizador</label>
+                            <span class="user-type">@GetRoleDisplayName(userProfile.Role)</span>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-item">
+                            <label>Data de Criação</label>
+                            <span>Informação não disponível</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Último Acesso</label>
+                            <span>@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="section-header">
-                <h2>Segurança</h2>
-                <button class="edit-button" @onclick="NavigateToChangePassword">
-                    <span class="password-icon"></span>
-                    Alterar Senha
-                </button>
-            </div>
-            <div class="security-info">
-                <p>A sua senha deve ser alterada regularmente para maior segurança. A última alteração foi realizada em @lastPasswordChange.ToString("dd/MM/yyyy").</p>
-            </div>
-        </div>
+        }
     </div>
 </div>
 
 @code {
     private bool showUserMenu = false;
-    private string userInitials => string.Join("", userProfile.Name.Split(' ').Select(n => n[0]));
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private UserProfileModel? userProfile = null;
+    
+    private string userInitials => userProfile != null && !string.IsNullOrEmpty(userProfile.Name) 
+        ? string.Join("", userProfile.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(n => n[0]).Take(2))
+        : "U";
 
-    private UserProfileModel userProfile = new UserProfileModel
+    protected override async Task OnInitializedAsync()
     {
-        Name = "João Silva",
-        Email = "joao.silva@exemplo.com",
-        Phone = "+351 912 345 678",
-        Birthdate = new DateTime(1985, 5, 15),
-        Address = "Rua das Flores, 123, 4700-000 Braga",
-        TaxNumber = "123456789",
-        Role = "Administrador",
-        MemberSince = new DateTime(2022, 3, 10)
-    };
+        await LoadUserProfile();
+    }
 
-    private void NavigateToEditProfile()
+    private async Task LoadUserProfile()
     {
-        // Navega para a página de edição de perfil
-        NavigationManager.NavigateTo("/profile/edit");
+        isLoading = true;
+        errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            // Verificar se há um usuário logado
+            if (UserStateService.UserId == Guid.Empty)
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            // Buscar dados do usuário via API
+            var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+                
+                if (user != null)
+                {
+                    userProfile = new UserProfileModel
+                    {
+                        Id = user.Id,
+                        Name = user.Nome ?? "Nome não disponível",
+                        Email = user.Email ?? "Email não disponível",
+                        Role = user.Cargo ?? "Utilizador",
+                        PermissaoId = user.PermissaoId
+                    };
+                    
+                    Console.WriteLine($"Perfil carregado: {userProfile.Name} ({userProfile.Role})");
+                }
+                else
+                {
+                    errorMessage = "Dados do usuário não encontrados.";
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                errorMessage = "Usuário não encontrado. Faça login novamente.";
+                // Limpar estado e redirecionar para login
+                UserStateService.UserId = Guid.Empty;
+                await Task.Delay(2000);
+                NavigationManager.NavigateTo("/login");
+            }
+            else
+            {
+                errorMessage = $"Erro ao carregar perfil: {response.StatusCode}";
+            }
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Erro de conexão com o servidor. Verifique sua conexão.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Erro inesperado ao carregar perfil.";
+            Console.WriteLine($"Erro ao carregar perfil: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetRoleDisplayName(string role)
+    {
+        return role switch
+        {
+            "Utilizador" => "Utilizador",
+            "GestorUtilizadores" => "Gestor de Utilizadores",
+            "Administrador" => "Administrador",
+            _ => role
+        };
     }
 
     private void ToggleUserMenu()
@@ -152,27 +275,24 @@
         showUserMenu = !showUserMenu;
     }
 
-    private void Logout()
+    private async Task Logout()
     {
+        // Limpar estado do usuário
+        UserStateService.UserId = Guid.Empty;
         NavigationManager.NavigateTo("/login");
+    }
+
+    private void NavigateToChangePassword()
+    {
+        NavigationManager.NavigateTo("/profile/change-password");
     }
 
     public class UserProfileModel
     {
+        public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
-        public string Phone { get; set; } = string.Empty;
-        public DateTime Birthdate { get; set; }
-        public string Address { get; set; } = string.Empty;
-        public string TaxNumber { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
-        public DateTime MemberSince { get; set; }
-    }
-    private DateTime lastPasswordChange = DateTime.Now.AddMonths(-3);
-
-    private void NavigateToChangePassword()
-    {
-        // Navega para a página de alteração de senha
-        NavigationManager.NavigateTo("/profile/change-password");
+        public Guid? PermissaoId { get; set; }
     }
 }

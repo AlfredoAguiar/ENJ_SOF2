@@ -1,8 +1,16 @@
 {
   "version": 2,
-  "dgSpecHash": "kUq/VSz6PK8=",
+  "dgSpecHash": "gmWeFEmAihE=",
   "success": true,
-  "projectFilePath": "C:\\Users\\diagu\\RiderProjects\\ES_2\\ES_2.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "C:\\Users\\diagu\\RiderProjects\\ENJ_SOF2tst\\ES_2.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\diagu\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.0\\microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\diagu\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.0\\microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\diagu\\.nuget\\packages\\microsoft.identitymodel.abstractions\\8.11.0\\microsoft.identitymodel.abstractions.8.11.0.nupkg.sha512",
+    "C:\\Users\\diagu\\.nuget\\packages\\microsoft.identitymodel.jsonwebtokens\\8.11.0\\microsoft.identitymodel.jsonwebtokens.8.11.0.nupkg.sha512",
+    "C:\\Users\\diagu\\.nuget\\packages\\microsoft.identitymodel.logging\\8.11.0\\microsoft.identitymodel.logging.8.11.0.nupkg.sha512",
+    "C:\\Users\\diagu\\.nuget\\packages\\microsoft.identitymodel.tokens\\8.11.0\\microsoft.identitymodel.tokens.8.11.0.nupkg.sha512",
+    "C:\\Users\\diagu\\.nuget\\packages\\system.identitymodel.tokens.jwt\\8.11.0\\system.identitymodel.tokens.jwt.8.11.0.nupkg.sha512"
+  ],
   "logs": []
 }

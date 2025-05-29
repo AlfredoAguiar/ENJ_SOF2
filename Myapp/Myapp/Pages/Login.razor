@@ -1,13 +1,13 @@
 ﻿@page "/login"
+@page "/"
 @using System.ComponentModel.DataAnnotations
 @using System.Net
 @using Microsoft.JSInterop
+@using WebApplication5.DTO
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@using WebApplication5.DTO
 @inject HttpClient Http
 @inject UserStateService UserStateService
-
 
 <div class="login-page">
     <div class="login-container">
@@ -27,7 +27,7 @@
         @if (!string.IsNullOrEmpty(successMessage))
         {
             <div class="alert-success">
-                <span class="alert-icon">&#10003;</span> <!-- ícone de check -->
+                <span class="alert-icon">✓</span>
                 <span>@successMessage</span>
             </div>
         }
@@ -37,21 +37,30 @@
             
             <div class="form-group">
                 <label for="email">Email</label>
-                <InputText id="email" class="form-control" @bind-Value="loginModel.Email" placeholder="seu@email.com" />
+                <InputText id="email" class="form-control" @bind-Value="loginModel.Email" placeholder="seu@email.com" disabled="@isLoading" />
                 <ValidationMessage For="@(() => loginModel.Email)" class="validation-message" />
             </div>
             
             <div class="form-group">
                 <label for="password">Senha</label>
-                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="Digite sua senha" />
+                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="Digite sua senha" disabled="@isLoading" />
                 <ValidationMessage For="@(() => loginModel.Password)" class="validation-message" />
             </div>
             
             <div class="form-options">
-                <a href="/register" class="forgot-password">Não tem conta?</a>
+                <a href="/register" class="forgot-password">Não tem conta? Registre-se</a>
             </div>
             
-            <button type="submit" class="login-button">Entrar</button>
+            <button type="submit" class="login-button" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span>Entrando...</span>
+                }
+                else
+                {
+                    <span>Entrar</span>
+                }
+            </button>
         </EditForm>
         
         <div class="login-footer">
@@ -64,51 +73,142 @@
     private LoginModel loginModel = new LoginModel();
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
+    private bool isLoading = false;
 
     private async Task HandleLogin()
     {
         errorMessage = string.Empty;
         successMessage = string.Empty;
+        isLoading = true;
+        StateHasChanged();
 
         try
         {
-            var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore/login", loginModel);
+            // Validação básica antes de enviar
+            if (string.IsNullOrWhiteSpace(loginModel.Email) || string.IsNullOrWhiteSpace(loginModel.Password))
+            {
+                errorMessage = "Email e senha são obrigatórios.";
+                return;
+            }
+
+            // Criar o objeto de login request conforme esperado pela API
+            var loginRequest = new LoginRequest
+            {
+                Email = loginModel.Email.Trim().ToLowerInvariant(),
+                Password = loginModel.Password
+            };
+
+            Console.WriteLine($"Tentando login com email: {loginRequest.Email}");
+
+            var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore/login", loginRequest);
 
             if (response.IsSuccessStatusCode)
             {
-                var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+                var user = await response.Content.ReadFromJsonAsync<LoginResponse>();
 
-                UserStateService.UserId = user.Id;
+                if (user != null && user.Id != Guid.Empty)
+                {
+                    // Salve o token para usar em chamadas autenticadas, por exemplo:
+                    await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", user.Token);
 
-                successMessage = "Login realizado com sucesso! Redirecionando...";
-                StateHasChanged();
+                    // Você também pode salvar o token no serviço de estado, se desejar
 
-                await Task.Delay(2000); 
-                NavigationManager.NavigateTo("/");
-            }
-            else if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                errorMessage = "Email ou senha incorretos.";
+                    UserStateService.UserId = user.Id;
+                    
+
+                    Console.WriteLine($"Login bem-sucedido para usuário: {user.Nome} (ID: {user.Id}, Cargo: {user.Cargo})");
+
+                    string redirectUrl = DetermineRedirectUrl(user.Cargo);
+
+                    successMessage = $"Login realizado com sucesso! Redirecionando para {GetUserTypeDescription(user.Cargo)}...";
+                    StateHasChanged();
+
+                    loginModel = new LoginModel();
+
+                    await Task.Delay(2000);
+                    NavigationManager.NavigateTo(redirectUrl);
+                }
+
+                else
+                {
+                    errorMessage = "Erro ao processar dados do usuário.";
+                    Console.WriteLine("Resposta da API não contém dados válidos do usuário");
+                }
             }
             else
             {
-                errorMessage = "Erro ao tentar fazer login.";
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Erro da API ({response.StatusCode}): {errorContent}");
+
+                errorMessage = response.StatusCode switch
+                {
+                    HttpStatusCode.Unauthorized => "Email ou senha incorretos.",
+                    HttpStatusCode.BadRequest => "Dados de login inválidos.",
+                    HttpStatusCode.NotFound => "Usuário não encontrado.",
+                    HttpStatusCode.InternalServerError => "Erro interno do servidor. Tente novamente mais tarde.",
+                    _ => $"Erro ao tentar fazer login: {response.StatusCode}"
+                };
             }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            errorMessage = "Erro de conexão com o servidor. Verifique se a API está rodando.";
+            Console.WriteLine($"Erro HTTP: {httpEx.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            errorMessage = "A requisição demorou muito tempo. Tente novamente.";
         }
         catch (Exception ex)
         {
-            errorMessage = $"Erro inesperado: {ex.Message}";
+            errorMessage = "Erro inesperado. Tente novamente.";
+            Console.WriteLine($"Erro inesperado: {ex.Message}");
         }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string DetermineRedirectUrl(string cargo)
+    {
+        return cargo switch
+        {
+            "Utilizador" => "main",
+            "GestorUtilizadores" => "/main2",
+            "Administrador" => "/main3",
+            _ => "main" // Default para utilizador se cargo não for reconhecido
+        };
+    }
+
+    private string GetUserTypeDescription(string cargo)
+    {
+        return cargo switch
+        {
+            "Utilizador" => "dashboard do utilizador",
+            "GestorUtilizadores" => "painel do gestor",
+            "Administrador" => "painel administrativo",
+            _ => "dashboard"
+        };
     }
 
     public class LoginModel
     {
         [Required(ErrorMessage = "Email é obrigatório")]
         [EmailAddress(ErrorMessage = "Formato de email inválido")]
+        [StringLength(150, ErrorMessage = "O email não pode ter mais de 150 caracteres.")]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Senha é obrigatória")]
+        [StringLength(100, ErrorMessage = "A senha deve ter entre {2} e {1} caracteres.", MinimumLength = 6)]
         public string Password { get; set; } = string.Empty;
-        
+    }
+
+    // Classe para corresponder ao schema LoginRequest da API
+    public class LoginRequest
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
     }
 }

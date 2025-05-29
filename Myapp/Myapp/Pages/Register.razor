@@ -1,10 +1,11 @@
 ﻿@page "/register"
 @using System.ComponentModel.DataAnnotations
+@using System.Net
+@using WebApplication5.DTO
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@using System.ComponentModel.DataAnnotations
-@using WebApplication5.DTO
 @inject HttpClient Http
+
 <div class="login-page">
     <div class="login-container">
         <div class="login-header">
@@ -19,40 +20,58 @@
                 <span>@errorMessage</span>
             </div>
         }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert-success">
+                <span class="alert-icon">✓</span>
+                <span>@successMessage</span>
+            </div>
+        }
         
         <EditForm Model="@registerModel" OnValidSubmit="HandleRegistration" class="login-form">
             <DataAnnotationsValidator />
             
             <div class="form-group">
                 <label for="name">Nome completo</label>
-                <InputText id="name" class="form-control" @bind-Value="registerModel.Name" placeholder="Seu nome completo" />
+                <InputText id="name" class="form-control" @bind-Value="registerModel.Name" placeholder="Seu nome completo" disabled="@isSubmitting" />
                 <ValidationMessage For="@(() => registerModel.Name)" class="validation-message" />
             </div>
             
             <div class="form-group">
                 <label for="email">Email</label>
-                <InputText id="email" class="form-control" @bind-Value="registerModel.Email" placeholder="seu@email.com" />
+                <InputText id="email" class="form-control" @bind-Value="registerModel.Email" placeholder="seu@email.com" disabled="@isSubmitting" />
                 <ValidationMessage For="@(() => registerModel.Email)" class="validation-message" />
             </div>
             
             <div class="form-row">
                 <div class="form-group form-group-half">
                     <label for="password">Senha</label>
-                    <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" placeholder="Escolha uma senha" />
+                    <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" placeholder="Escolha uma senha" disabled="@isSubmitting" />
                     <ValidationMessage For="@(() => registerModel.Password)" class="validation-message" />
                 </div>
                 
                 <div class="form-group form-group-half">
                     <label for="confirmPassword">Confirmar senha</label>
-                    <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" placeholder="Confirme a senha" />
+                    <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" placeholder="Confirme a senha" disabled="@isSubmitting" />
                     <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="validation-message" />
                 </div>
             </div>
+            
             <br/>
-            <button type="submit" class="login-button">Criar conta</button>
+            <button type="submit" class="login-button" disabled="@isSubmitting">
+                @if (isSubmitting)
+                {
+                    <span>Criando conta...</span>
+                }
+                else
+                {
+                    <span>Criar conta</span>
+                }
+            </button>
             
             <div class="form-footer">
-                <p>Já possui uma conta? <a href="/login">Faça login</a></p>
+                <p>Já possui uma conta? <a href="/">Faça login</a></p>
             </div>
         </EditForm>
         
@@ -66,72 +85,124 @@
     private RegisterModel registerModel = new RegisterModel();
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
+    private bool isSubmitting = false;
     
     private async Task HandleRegistration()
     {
+        isSubmitting = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        
+        try
         {
-            errorMessage = "";
-            successMessage = string.Empty;
-            
+            // Validar se as senhas coincidem
             if (registerModel.Password != registerModel.ConfirmPassword)
             {
                 errorMessage = "As senhas não coincidem.";
                 return;
             }
 
-            var newUser = new UtilizadoreDto
-            {
-                Id = Guid.NewGuid(),
-                Nome = registerModel.Name,
-                Email = registerModel.Email,
-                Senha = registerModel.Password, 
-                Cargo = "Utilizador",
-                PermissaoId = Guid.Parse("8a14aeb8-aaf8-4fcd-8d8a-a5cd1e5ec0fd")
-            };
-
-
+            // Primeiro, vamos buscar uma permissão existente
+            Guid? permissaoId = null;
             try
             {
-                var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore", newUser);
-
-                if (response.IsSuccessStatusCode)
+                var permissoesResponse = await Http.GetAsync("http://localhost:5189/api/Permisso");
+                if (permissoesResponse.IsSuccessStatusCode)
                 {
-                    successMessage = "Registo realizado com sucesso! Redirecionando...";
-                    StateHasChanged();
-
-                    await Task.Delay(2000); 
-                    NavigationManager.NavigateTo("/login");
-                }
-                else
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    errorMessage = $"Erro ao registrar usuário: {errorContent}";
+                    var permissoes = await permissoesResponse.Content.ReadFromJsonAsync<List<PermissoDto>>();
+                    if (permissoes != null && permissoes.Any())
+                    {
+                        // Usar a primeira permissão disponível ou criar uma lógica específica
+                        permissaoId = permissoes.First().Id;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                errorMessage = $"Exceção: {ex.Message}";
+                Console.WriteLine($"Erro ao buscar permissões: {ex.Message}");
+                // Se não conseguir buscar permissões, vamos tentar sem PermissaoId
             }
+
+            // Criar objeto do novo utilizador
+            var newUser = new UtilizadoreDto
+            {
+                Id = Guid.NewGuid(),
+                Nome = registerModel.Name?.Trim(),
+                Email = registerModel.Email?.Trim()?.ToLowerInvariant(),
+                Senha = registerModel.Password, // A API deve fazer o hash
+                Cargo = "Utilizador", // Cargo padrão
+                PermissaoId = permissaoId // Pode ser null se não encontrou permissões
+            };
+
+            Console.WriteLine($"Enviando dados: Nome={newUser.Nome}, Email={newUser.Email}, Cargo={newUser.Cargo}, PermissaoId={newUser.PermissaoId}");
+
+            // Enviar requisição para a API
+            var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore", newUser);
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Registo realizado com sucesso! Redirecionando para o login...";
+                StateHasChanged();
+
+                // Limpar o formulário
+                registerModel = new RegisterModel();
+                
+                // Aguardar 3 segundos antes de redirecionar
+                await Task.Delay(3000);
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Erro da API ({response.StatusCode}): {errorContent}");
+                
+                errorMessage = response.StatusCode switch
+                {
+                    HttpStatusCode.BadRequest => $"Dados inválidos: {errorContent}",
+                    HttpStatusCode.Conflict => "Este email já está registrado no sistema.",
+                    HttpStatusCode.InternalServerError => $"Erro interno do servidor. Detalhes: {errorContent}",
+                    _ => $"Erro ao registrar utilizador: {response.StatusCode} - {errorContent}"
+                };
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            errorMessage = "Erro de conexão com o servidor. Verifique se a API está rodando.";
+            Console.WriteLine($"Erro HTTP: {httpEx.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            errorMessage = "A requisição demorou muito tempo. Tente novamente.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Ocorreu um erro inesperado: {ex.Message}";
+            Console.WriteLine($"Erro inesperado: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
         }
     }
 
     public class RegisterModel
     {
         [Required(ErrorMessage = "Nome é obrigatório")]
-        [StringLength(100, ErrorMessage = "O nome deve ter entre {2} e {1} caracteres.", MinimumLength = 3)]
+        [StringLength(100, ErrorMessage = "O nome deve ter entre {2} e {1} caracteres.", MinimumLength = 2)]
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Email é obrigatório")]
         [EmailAddress(ErrorMessage = "Formato de email inválido")]
+        [StringLength(150, ErrorMessage = "O email não pode ter mais de 150 caracteres.")]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Senha é obrigatória")]
-        [StringLength(100, ErrorMessage = "A senha deve ter pelo menos {2} caracteres.", MinimumLength = 6)]
+        [StringLength(100, ErrorMessage = "A senha deve ter entre {2} e {1} caracteres.", MinimumLength = 6)]
         public string Password { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Confirmação de senha é obrigatória")]
         [Compare("Password", ErrorMessage = "As senhas não coincidem")]
         public string ConfirmPassword { get; set; } = string.Empty;
-        
     }
 }

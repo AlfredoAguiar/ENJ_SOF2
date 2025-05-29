@@ -1,6 +1,10 @@
-﻿@page "/"
+﻿@page "/main"
 @attribute [Authorize]
+@using System.Net
+@using WebApplication5.DTO
 @inject NavigationManager NavigationManager
+@inject HttpClient Http
+@inject UserStateService UserStateService
 
 <div class="app-container">
     <!-- Sidebar Navigation -->
@@ -9,7 +13,7 @@
             <h2>Gestão Ativos</h2>
         </div>
         <nav class="sidebar-nav">
-            <a href="/" class="nav-item active">
+            <a href="/main" class="nav-item active">
                 <div class="nav-icon dashboard-nav-icon"></div>
                 <span>Dashboard</span>
             </a>
@@ -36,209 +40,564 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Top Header -->
-        <header class="dashboard-header">
-            <div class="dashboard-title">
-                <h1>Dashboard Financeiro</h1>
-                <p>Visão geral dos seus ativos financeiros</p>
+        @if (isLoading)
+        {
+            <div class="loading-container">
+                <div class="loading-spinner">
+                    <p>Carregando dados...</p>
+                </div>
             </div>
-            <div class="user-profile">
-                <span class="user-greeting">Olá, <strong>@userName</strong></span>
-                <button class="user-menu-button" @onclick="ToggleUserMenu">
-                    <div class="avatar">@userInitials</div>
-                    @if (showUserMenu)
-                    {
-                        <div class="user-menu">
-                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
-                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+        }
+        else
+        {
+            <!-- Top Header -->
+            <header class="dashboard-header">
+                <div class="dashboard-title">
+                    <h1>Dashboard Financeiro</h1>
+                    <p>Visão geral dos seus ativos financeiros</p>
+                </div>
+                <div class="user-profile">
+                    <span class="user-greeting">Olá, <strong>@userName</strong></span>
+                    <button class="user-menu-button" @onclick="ToggleUserMenu">
+                        <div class="avatar">@userInitials</div>
+                        @if (showUserMenu)
+                        {
+                            <div class="user-menu">
+                                <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                                <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                            </div>
+                        }
+                    </button>
+                </div>
+            </header>
+
+            <!-- Portfolio Summary -->
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <div class="stat-icon portfolio-icon"></div>
+                    <div class="stat-info">
+                        <span class="stat-value">@totalPortfolioValue.ToString("C2")</span>
+                        <span class="stat-label">Valor Total da Carteira</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon performance-icon"></div>
+                    <div class="stat-info">
+                        <span class="stat-value">@monthlyReturn.ToString("+0.0;-0.0")%</span>
+                        <span class="stat-label">Retorno Mensal</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon dividends-icon"></div>
+                    <div class="stat-info">
+                        <span class="stat-value">@monthlyEarnings.ToString("C2")</span>
+                        <span class="stat-label">Rendimentos do Mês</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon alerts-icon"></div>
+                    <div class="stat-info">
+                        <span class="stat-value">@activeAlerts</span>
+                        <span class="stat-label">Alertas Ativos</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Asset Allocation -->
+            <div class="dashboard-content">
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Alocação de Ativos</h2>
+                        <a href="/portfolio" class="view-all">Ver detalhes</a>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Classe</th>
+                                    <th>Valor</th>
+                                    <th>Alocação</th>
+                                    <th>Retorno</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var asset in assetAllocation)
+                                {
+                                    <tr>
+                                        <td>@asset.Class</td>
+                                        <td>@asset.Value.ToString("C2")</td>
+                                        <td>@asset.Allocation.ToString("0.0")%</td>
+                                        <td class="@(asset.Return >= 0 ? "positive-return" : "negative-return")">@(asset.Return >= 0 ? "+" : "")@asset.Return.ToString("0.0")%</td>
+                                        <td><span class="status-badge @asset.StatusClass">@asset.Status</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="dashboard-row">
+                    <div class="dashboard-section half">
+                        <div class="section-header">
+                            <h2>Próximos Pagamentos</h2>
+                            <a href="/payments" class="view-all">Ver todos</a>
                         </div>
-                    }
-                </button>
-            </div>
-        </header>
-
-        <!-- Portfolio Summary -->
-        <div class="dashboard-stats">
-            <div class="stat-card">
-                <div class="stat-icon portfolio-icon"></div>
-                <div class="stat-info">
-                    <span class="stat-value">325.800,00 €</span>
-                    <span class="stat-label">Valor Total da Carteira</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon performance-icon"></div>
-                <div class="stat-info">
-                    <span class="stat-value">+5,2%</span>
-                    <span class="stat-label">Retorno Mensal</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon dividends-icon"></div>
-                <div class="stat-info">
-                    <span class="stat-value">1.520,00 €</span>
-                    <span class="stat-label">Rendimentos do Mês</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon alerts-icon"></div>
-                <div class="stat-info">
-                    <span class="stat-value">2</span>
-                    <span class="stat-label">Alertas Ativos</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Asset Allocation -->
-        <div class="dashboard-content">
-            <div class="dashboard-section">
-                <div class="section-header">
-                    <h2>Alocação de Ativos</h2>
-                    <a href="/portfolio" class="view-all">Ver detalhes</a>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Classe</th>
-                                <th>Valor</th>
-                                <th>Alocação</th>
-                                <th>Alvo</th>
-                                <th>Retorno</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var asset in assetAllocation)
+                        <div class="maintenance-list">
+                            @foreach (var payment in upcomingPayments)
                             {
-                                <tr>
-                                    <td>@asset.Class</td>
-                                    <td>@asset.Value.ToString("C2")</td>
-                                    <td>@asset.Allocation.ToString("0.0")%</td>
-                                    <td>@asset.Target.ToString("0.0")%</td>
-                                    <td class="@(asset.Return >= 0 ? "positive-return" : "negative-return")">@(asset.Return >= 0 ? "+" : "")@asset.Return.ToString("0.0")%</td>
-                                    <td><span class="status-badge @asset.StatusClass">@asset.Status</span></td>
-                                </tr>
+                                <div class="maintenance-item">
+                                    <div class="maintenance-date">
+                                        <span class="day">@payment.Date.Day</span>
+                                        <span class="month">@payment.Date.ToString("MMM")</span>
+                                    </div>
+                                    <div class="maintenance-details">
+                                        <h4>@payment.AssetName</h4>
+                                        <p>@payment.Value.ToString("C2") (@payment.Description)</p>
+                                        <span class="maintenance-technician">@payment.Type</span>
+                                    </div>
+                                </div>
                             }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                        </div>
+                    </div>
 
-            <div class="dashboard-row">
-                <div class="dashboard-section half">
-                    <div class="section-header">
-                        <h2>Próximos Pagamentos</h2>
-                        <a href="/payments" class="view-all">Ver todos</a>
-                    </div>
-                    <div class="maintenance-list">
-                        @foreach (var payment in upcomingPayments)
-                        {
-                            <div class="maintenance-item">
-                                <div class="maintenance-date">
-                                    <span class="day">@payment.Date.Day</span>
-                                    <span class="month">@payment.Date.ToString("MMM")</span>
-                                </div>
-                                <div class="maintenance-details">
-                                    <h4>@payment.AssetName</h4>
-                                    <p>@payment.Value.ToString("C2") (@payment.Description)</p>
-                                    <span class="maintenance-technician">@payment.Type</span>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <div class="dashboard-section half">
-                    <div class="section-header">
-                        <h2>Alertas</h2>
-                        <a href="/alerts" class="view-all">Ver todos</a>
-                    </div>
-                    <div class="alerts-list">
-                        @foreach (var alert in financialAlerts)
-                        {
-                            <div class="alert-item @alert.SeverityClass">
-                                <div class="alert-icon"></div>
-                                <div class="alert-details">
-                                    <h4>@alert.Title</h4>
-                                    <p>@alert.Description</p>
-                                    <span class="alert-date">@alert.Date.ToString("dd/MM/yyyy HH:mm")</span>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Recent Transactions -->
-            <div class="dashboard-section">
-                <div class="section-header">
-                    <h2>Movimentos Recentes</h2>
-                    <a href="/transactions" class="view-all">Ver todos</a>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Ativo</th>
-                                <th>Tipo</th>
-                                <th>Descrição</th>
-                                <th>Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var transaction in recentTransactions)
+                    <div class="dashboard-section half">
+                        <div class="section-header">
+                            <h2>Alertas</h2>
+                            <a href="/alerts" class="view-all">Ver todos</a>
+                        </div>
+                        <div class="alerts-list">
+                            @foreach (var alert in financialAlerts)
                             {
-                                <tr>
-                                    <td>@transaction.Date.ToString("dd/MM/yyyy")</td>
-                                    <td>@transaction.Asset</td>
-                                    <td><span class="transaction-type @transaction.TypeClass">@transaction.Type</span></td>
-                                    <td>@transaction.Description</td>
-                                    <td>@transaction.Value.ToString("C2")</td>
-                                </tr>
+                                <div class="alert-item @alert.SeverityClass">
+                                    <div class="alert-icon"></div>
+                                    <div class="alert-details">
+                                        <h4>@alert.Title</h4>
+                                        <p>@alert.Description</p>
+                                        <span class="alert-date">@alert.Date.ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+                                </div>
                             }
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Transactions -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Movimentos Recentes</h2>
+                        <a href="/transactions" class="view-all">Ver todos</a>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Ativo</th>
+                                    <th>Tipo</th>
+                                    <th>Descrição</th>
+                                    <th>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var transaction in recentTransactions)
+                                {
+                                    <tr>
+                                        <td>@transaction.Date.ToString("dd/MM/yyyy")</td>
+                                        <td>@transaction.Asset</td>
+                                        <td><span class="transaction-type @transaction.TypeClass">@transaction.Type</span></td>
+                                        <td>@transaction.Description</td>
+                                        <td>@transaction.Value.ToString("C2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
+        }
     </div>
 </div>
 
 @code {
-    private string userName = "João Silva";
+
+    private bool isLoading = true;
+    private string userName = "Utilizador";
     private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
     private bool showUserMenu = false;
 
-    private List<AssetAllocationModel> assetAllocation = new List<AssetAllocationModel>
-    {
-        new AssetAllocationModel { Class = "Depósitos a Prazo", Value = 114030.00M, Allocation = 35.0M, Target = 30.0M, Return = 2.5M, Status = "Sobrealoc.", StatusClass = "overallocated" },
-        new AssetAllocationModel { Class = "Fundos de Investimento", Value = 130320.00M, Allocation = 40.0M, Target = 45.0M, Return = 7.8M, Status = "Subaloc.", StatusClass = "underallocated" },
-        new AssetAllocationModel { Class = "Imóveis Arrendados", Value = 81450.00M, Allocation = 25.0M, Target = 25.0M, Return = 4.9M, Status = "Balanceado", StatusClass = "balanced" }
-    };
+    // Dashboard Statistics
+    private decimal totalPortfolioValue = 0;
+    private decimal monthlyReturn = 0;
+    private decimal monthlyEarnings = 0;
+    private int activeAlerts = 0;
 
-    private List<PaymentModel> upcomingPayments = new List<PaymentModel>
+    // Data Collections
+    private List<AssetAllocationModel> assetAllocation = new List<AssetAllocationModel>();
+    private List<PaymentModel> upcomingPayments = new List<PaymentModel>();
+    private List<AlertModel> financialAlerts = new List<AlertModel>();
+    private List<TransactionModel> recentTransactions = new List<TransactionModel>();
+   protected override async Task OnInitializedAsync()
     {
-        new PaymentModel { AssetName = "Depósito a Prazo Millennium", Date = DateTime.Now.AddDays(5), Value = 87.50M, Description = "Juros Mensais", Type = "Depósito" },
-        new PaymentModel { AssetName = "Fundo PPR Reforma Segura", Date = DateTime.Now.AddDays(8), Value = 262.50M, Description = "Rendimento", Type = "Fundo" },
-        new PaymentModel { AssetName = "Apartamento T2 Braga", Date = DateTime.Now.AddDays(2), Value = 650.00M, Description = "Renda Mensal", Type = "Imóvel" },
-        new PaymentModel { AssetName = "Loja Comercial Porto", Date = DateTime.Now.AddDays(12), Value = 320.00M, Description = "Renda Mensal", Type = "Imóvel" }
-    };
+        await LoadDashboardData();
+    }
 
-    private List<AlertModel> financialAlerts = new List<AlertModel>
+    private async Task LoadDashboardData()
     {
-        new AlertModel { Title = "Taxa Euribor Alterada", Description = "A taxa Euribor a 12 meses aumentou para 4.2% - considere renegociar os seus depósitos", Date = DateTime.Now.AddHours(-12), SeverityClass = "info" },
-        new AlertModel { Title = "Renovação de Depósito", Description = "O Depósito a Prazo Santander vence em 7 dias. Preparar para renovação ou redirecionamento.", Date = DateTime.Now.AddDays(-1), SeverityClass = "warning" }
-    };
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
 
-    private List<TransactionModel> recentTransactions = new List<TransactionModel>
+            // Carregar dados do usuário
+            await LoadUserData();
+
+            // Carregar dados da carteira
+            await LoadPortfolioData();
+
+            // Carregar alocação de ativos
+            await LoadAssetAllocation();
+
+            // Carregar próximos pagamentos
+            await LoadUpcomingPayments();
+
+            // Carregar alertas
+            LoadFinancialAlerts();
+
+            // Carregar transações recentes
+            await LoadRecentTransactions();
+
+            // Calcular estatísticas
+            CalculateDashboardStats();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar dados do dashboard: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUserData()
     {
-        new TransactionModel { Date = DateTime.Now.AddDays(-2), Asset = "Apartamento T2 Braga", Type = "Recebimento", TypeClass = "buy", Description = "Renda de Maio", Value = 650.00M },
-        new TransactionModel { Date = DateTime.Now.AddDays(-5), Asset = "Fundo PPR Reforma Segura", Type = "Investimento", TypeClass = "buy", Description = "Reforço mensal", Value = 250.00M },
-        new TransactionModel { Date = DateTime.Now.AddDays(-8), Asset = "Depósito a Prazo Millennium", Type = "Recebimento", TypeClass = "buy", Description = "Juros Abril", Value = 87.50M },
-        new TransactionModel { Date = DateTime.Now.AddDays(-15), Asset = "Loja Comercial Porto", Type = "Despesa", TypeClass = "sell", Description = "Manutenção", Value = -125.00M }
-    };
+        try
+        {
+            if (UserStateService.UserId != Guid.Empty)
+            {
+                var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+                    if (user != null)
+                    {
+                        userName = user.Nome ?? "Utilizador";
+                    }
+                }
+            }
+            else if (UserStateService.UserId == Guid.Empty)
+            {
+                NavigationManager.NavigateTo("/");
+                return;
+                
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar dados do usuário: {ex.Message}");
+        }
+    }
+
+    private async Task LoadPortfolioData()
+    {
+        try
+        {
+            var response = await Http.GetAsync("http://localhost:5189/api/Carteira");
+            if (response.IsSuccessStatusCode)
+            {
+                var carteiras = await response.Content.ReadFromJsonAsync<List<CarteiraDto>>();
+                if (carteiras != null)
+                {
+                    // Filtrar carteiras do usuário atual
+                    var userCarteiras = carteiras.Where(c => c.UtilizadorId == UserStateService.UserId).ToList();
+                    totalPortfolioValue = userCarteiras.Sum(c => (decimal)c.Montante);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar dados da carteira: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAssetAllocation()
+    {
+        try
+        {
+            assetAllocation.Clear();
+
+            // Carregar Depósitos
+            await LoadDeposits();
+
+            // Carregar Fundos de Investimento
+            await LoadInvestmentFunds();
+
+            // Carregar Imóveis
+            await LoadRealEstate();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar alocação de ativos: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDeposits()
+    {
+        try
+        {
+            var response = await Http.GetAsync("http://localhost:5189/api/Deposito");
+            if (response.IsSuccessStatusCode)
+            {
+                var depositos = await response.Content.ReadFromJsonAsync<List<DepositoDto>>();
+                if (depositos != null && depositos.Any())
+                {
+                    var totalDeposits = depositos.Sum(d => (decimal)d.Montante);
+                    var avgReturn = depositos.Average(d => (decimal)d.TaxaJuros);
+                    var allocation = totalPortfolioValue > 0 ? (totalDeposits / totalPortfolioValue) * 100 : 0;
+
+                    assetAllocation.Add(new AssetAllocationModel
+                    {
+                        Class = "Depósitos a Prazo",
+                        Value = totalDeposits,
+                        Allocation = allocation,
+                        Return = avgReturn,
+                        Status = GetAllocationStatus(allocation, 30), // Target de 30%
+                        StatusClass = GetAllocationStatusClass(allocation, 30)
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar depósitos: {ex.Message}");
+        }
+    }
+
+    private async Task LoadInvestmentFunds()
+    {
+        try
+        {
+            var response = await Http.GetAsync("http://localhost:5189/api/FundosInvestimentos");
+            if (response.IsSuccessStatusCode)
+            {
+                var fundos = await response.Content.ReadFromJsonAsync<List<FundosInvestimentoDto>>();
+                if (fundos != null && fundos.Any())
+                {
+                    var totalFunds = fundos.Sum(f => (decimal)f.MontanteInvestido);
+                    var avgReturn = fundos.Average(f => (decimal)f.TaxaJurosPadrao);
+                    var allocation = totalPortfolioValue > 0 ? (totalFunds / totalPortfolioValue) * 100 : 0;
+
+                    assetAllocation.Add(new AssetAllocationModel
+                    {
+                        Class = "Fundos de Investimento",
+                        Value = totalFunds,
+                        Allocation = allocation,
+                        Return = avgReturn,
+                        Status = GetAllocationStatus(allocation, 45), // Target de 45%
+                        StatusClass = GetAllocationStatusClass(allocation, 45)
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar fundos de investimento: {ex.Message}");
+        }
+    }
+
+    private async Task LoadRealEstate()
+    {
+        try
+        {
+            var response = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
+            if (response.IsSuccessStatusCode)
+            {
+                var imoveis = await response.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>();
+                if (imoveis != null && imoveis.Any())
+                {
+                    var totalRealEstate = imoveis.Sum(i => (decimal)i.ValorPropriedade);
+                    var avgReturn = imoveis.Any() ? imoveis.Average(i => 
+                        i.ValorPropriedade > 0 ? ((decimal)i.ValorRenda * 12 / (decimal)i.ValorPropriedade) * 100 : 0) : 0;
+                    var allocation = totalPortfolioValue > 0 ? (totalRealEstate / totalPortfolioValue) * 100 : 0;
+
+                    assetAllocation.Add(new AssetAllocationModel
+                    {
+                        Class = "Imóveis Arrendados",
+                        Value = totalRealEstate,
+                        Allocation = allocation,
+                        Return = avgReturn,
+                        Status = GetAllocationStatus(allocation, 25), // Target de 25%
+                        StatusClass = GetAllocationStatusClass(allocation, 25)
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar imóveis: {ex.Message}");
+        }
+    }
+
+    private async Task LoadUpcomingPayments()
+    {
+        try
+        {
+            upcomingPayments.Clear();
+
+            // Simular próximos pagamentos baseados nos dados reais
+            // Em uma implementação real, você teria uma tabela de pagamentos/transações agendadas
+            
+            var depositsResponse = await Http.GetAsync("http://localhost:5189/api/Deposito");
+            if (depositsResponse.IsSuccessStatusCode)
+            {
+                var depositos = await depositsResponse.Content.ReadFromJsonAsync<List<DepositoDto>>();
+                if (depositos != null)
+                {
+                    foreach (var deposito in depositos.Take(2))
+                    {
+                        var monthlyInterest = (decimal)deposito.Montante * (decimal)deposito.TaxaJuros / 100 / 12;
+                        upcomingPayments.Add(new PaymentModel
+                        {
+                            AssetName = $"Depósito {deposito.Banco}",
+                            Date = DateTime.Now.AddDays(Random.Shared.Next(1, 30)),
+                            Value = monthlyInterest,
+                            Description = "Juros Mensais",
+                            Type = "Depósito"
+                        });
+                    }
+                }
+            }
+
+            var imoveisResponse = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
+            if (imoveisResponse.IsSuccessStatusCode)
+            {
+                var imoveis = await imoveisResponse.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>();
+                if (imoveis != null)
+                {
+                    foreach (var imovel in imoveis.Take(2))
+                    {
+                        upcomingPayments.Add(new PaymentModel
+                        {
+                            AssetName = imovel.Designacao ?? "Imóvel",
+                            Date = DateTime.Now.AddDays(Random.Shared.Next(1, 30)),
+                            Value = (decimal)imovel.ValorRenda,
+                            Description = "Renda Mensal",
+                            Type = "Imóvel"
+                        });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar próximos pagamentos: {ex.Message}");
+        }
+    }
+
+    private void LoadFinancialAlerts()
+    {
+        // Gerar alertas baseados nos dados carregados
+        financialAlerts.Clear();
+
+        // Alertas de exemplo baseados na alocação
+        var depositAllocation = assetAllocation.FirstOrDefault(a => a.Class == "Depósitos a Prazo");
+        if (depositAllocation != null && depositAllocation.Allocation > 35)
+        {
+            financialAlerts.Add(new AlertModel
+            {
+                Title = "Sobrealocação em Depósitos",
+                Description = $"Você tem {depositAllocation.Allocation:0.1}% em depósitos. Considere diversificar.",
+                Date = DateTime.Now.AddHours(-2),
+                SeverityClass = "warning"
+            });
+        }
+
+        financialAlerts.Add(new AlertModel
+        {
+            Title = "Taxa Euribor Alterada",
+            Description = "A taxa Euribor a 12 meses aumentou para 4.2% - considere renegociar os seus depósitos",
+            Date = DateTime.Now.AddHours(-12),
+            SeverityClass = "info"
+        });
+
+        activeAlerts = financialAlerts.Count;
+    }
+
+    private async Task LoadRecentTransactions()
+    {
+        try
+        {
+            recentTransactions.Clear();
+
+            // Simular transações recentes baseadas nos ativos
+            // Em uma implementação real, você teria uma tabela de transações
+
+            var carteirasResponse = await Http.GetAsync("http://localhost:5189/api/Carteira");
+            if (carteirasResponse.IsSuccessStatusCode)
+            {
+                var carteiras = await carteirasResponse.Content.ReadFromJsonAsync<List<CarteiraDto>>();
+                if (carteiras != null)
+                {
+                    var userCarteiras = carteiras.Where(c => c.UtilizadorId == UserStateService.UserId).Take(5);
+                    
+                    foreach (var carteira in userCarteiras)
+                    {
+                        recentTransactions.Add(new TransactionModel
+                        {
+                            Date = carteira.DataInicio,
+                            Asset = "Ativo Financeiro",
+                            Type = "Investimento",
+                            TypeClass = "buy",
+                            Description = "Investimento inicial",
+                            Value = (decimal)carteira.Montante
+                        });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar transações recentes: {ex.Message}");
+        }
+    }
+
+    private void CalculateDashboardStats()
+    {
+        // Calcular retorno mensal médio
+        if (assetAllocation.Any())
+        {
+            monthlyReturn = assetAllocation.Average(a => a.Return);
+        }
+
+        // Calcular rendimentos mensais estimados
+        monthlyEarnings = totalPortfolioValue * (monthlyReturn / 100) / 12;
+    }
+
+    private string GetAllocationStatus(decimal current, decimal target)
+    {
+        var difference = Math.Abs(current - target);
+        if (difference <= 2) return "Balanceado";
+        return current > target ? "Sobrealoc." : "Subaloc.";
+    }
+
+    private string GetAllocationStatusClass(decimal current, decimal target)
+    {
+        var difference = Math.Abs(current - target);
+        if (difference <= 2) return "balanced";
+        return current > target ? "overallocated" : "underallocated";
+    }
 
     private void ToggleUserMenu()
     {
@@ -247,16 +606,16 @@
 
     private void Logout()
     {
-        // Implementar lógica de logout
-        NavigationManager.NavigateTo("/login");
+        UserStateService.UserId = Guid.Empty;
+        NavigationManager.NavigateTo("/");
     }
 
+    // Model Classes
     public class AssetAllocationModel
     {
         public string Class { get; set; } = string.Empty;
         public decimal Value { get; set; }
         public decimal Allocation { get; set; }
-        public decimal Target { get; set; }
         public decimal Return { get; set; }
         public string Status { get; set; } = string.Empty;
         public string StatusClass { get; set; } = string.Empty;
@@ -289,3 +648,17 @@
         public decimal Value { get; set; }
     }
 }
+
+<style>
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 50vh;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+    }
+</style>
