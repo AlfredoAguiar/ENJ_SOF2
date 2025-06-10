@@ -1,385 +1,1262 @@
-﻿@page "/reports"
-@page "/reports/{requestedReportType}"
+﻿page "/reports"
 @attribute [Authorize]
 @using System.Net
 @using System.Globalization
+@using System.Text
 @using WebApplication5.DTO
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
 @inject UserStateService UserStateService
+@inject IJSRuntime JSRuntime
 
-<div class="app-container">
-    <!-- Sidebar Navigation -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2>Gestão Ativos</h2>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="/main" class="nav-item">
-                <div class="nav-icon dashboard-nav-icon"></div>
-                <span>Dashboard</span>
-            </a>
-            <a href="/portfolio" class="nav-item">
-                <div class="nav-icon portfolio-nav-icon"></div>
-                <span>Carteira</span>
-            </a>
-            <a href="/transactions" class="nav-item">
-                <div class="nav-icon transactions-nav-icon"></div>
-                <span>Transações</span>
-            </a>
-            <a href="/reports" class="nav-item active">
-                <div class="nav-icon reports-nav-icon"></div>
-                <span>Relatórios</span>
-            </a>
-        </nav>
-        <div class="sidebar-footer">
-            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
-                <div class="nav-icon logout-icon"></div>
-                <span>Sair</span>
-            </a>
+@if (isLoading)
+{
+    <div class="loading-container">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Carregando dados...</p>
         </div>
     </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        @if (isLoading)
+}
+else if (!hasAccess)
+{
+    <div class="access-denied-container">
+        <div class="access-denied-message">
+            <div class="access-denied-icon">🚫</div>
+            <h2>Acesso Negado</h2>
+            <p>Você não tem permissão para acessar esta página.</p>
+            <button @onclick="RedirectToMain" class="redirect-button">
+                <span>← Voltar ao Dashboard</span>
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="app-container">
+        @if (userRole != "Administrador")
         {
-            <div class="loading-container">
-                <div class="loading-spinner">
-                    <p>Carregando dados...</p>
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Gestão Ativos</h2>
+                </div>
+                <nav class="sidebar-nav">
+                    @if (userRole == "Utilizador")
+                    {
+                        <a href="/main" class="nav-item">
+                            <div class="nav-icon dashboard-nav-icon"></div>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/portfolio" class="nav-item">
+                            <div class="nav-icon portfolio-nav-icon"></div>
+                            <span>Carteira</span>
+                        </a>
+                        <a href="/transactions" class="nav-item">
+                            <div class="nav-icon transactions-nav-icon"></div>
+                            <span>Transações</span>
+                        </a>
+                    }
+                    else if (userRole == "GestorUtilizadores")
+                    {
+                        <a href="/main" class="nav-item">
+                            <div class="nav-icon dashboard-nav-icon"></div>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/portfolio" class="nav-item">
+                            <div class="nav-icon portfolio-nav-icon"></div>
+                            <span>Carteira</span>
+                        </a>
+                        <a href="/transactions" class="nav-item">
+                            <div class="nav-icon transactions-nav-icon"></div>
+                            <span>Transações</span>
+                        </a>
+                        <a href="/reports" class="nav-item active">
+                            <div class="nav-icon reports-nav-icon"></div>
+                            <span>Relatórios</span>
+                        </a>
+                    }
+                </nav>
+                <div class="sidebar-footer">
+                    <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                        <div class="nav-icon logout-nav-icon"></div>
+                        <span>Sair</span>
+                    </a>
                 </div>
             </div>
         }
-        else
-        {
-            <!-- Top Header -->
-            <header class="dashboard-header">
-                <div class="dashboard-title">
-                    <h1>Relatórios</h1>
-                    <p>Visualize e baixe os relatórios gerados</p>
-                </div>
-                <div class="user-profile">
-                    <span class="user-greeting">Olá, <strong>@userName</strong></span>
-                    <button class="user-menu-button" @onclick="ToggleUserMenu">
-                        <div class="avatar">@userInitials</div>
+
+        <div class="main-content">
+            <div class="container">
+                <div class="header">
+                    <div class="header-left">
+                        <h1>Relatórios & Gestão</h1>
+                        <p>Gestão completa de utilizadores e exportação de dados</p>
+                    </div>
+                    <div class="header-right">
+                        <div class="user-info">
+                            <div class="user-greeting">Olá, <strong>@userName</strong></div>
+                        </div>
+                        <div class="user-avatar" @onclick="ToggleUserMenu">@GetUserInitials(userName)</div>
                         @if (showUserMenu)
                         {
                             <div class="user-menu">
-                                <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                                @if (userRole == "GestorUtilizadores")
+                                {
+                                    <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                                }
                                 <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
                             </div>
                         }
-                    </button>
-                </div>
-            </header>
-
-            <!-- Reports Content -->
-            <div class="reports-container">
-                @if (showGenerateForm)
-                {
-                    <!-- Report Generation Section -->
-                    <div class="report-generation-section">
-                        <div class="section-header">
-                            <h2>@GenerationTitle</h2>
-                            <button class="toggle-form-button" @onclick="ToggleGenerateForm">
-                                @(showGenerateForm ? "Esconder" : "Mostrar")
-                            </button>
-                        </div>
-                        <div class="report-generator-form">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Tipo de Relatório</label>
-                                    <select @bind="newReport.Type">
-                                        <option value="Fluxo de Caixa">Fluxo de Caixa</option>
-                                        <option value="Rendimento de Ativos">Rendimento de Ativos</option>
-                                        <option value="Análise de Despesas">Análise de Despesas</option>
-                                        <option value="Projeção Financeira">Projeção Financeira</option>
-                                        <option value="Impostos">Impostos</option>
-                                        <option value="Carteira Consolidada">Carteira Consolidada</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Formato</label>
-                                    <select @bind="newReport.Format">
-                                        <option value="PDF">PDF</option>
-                                        <option value="Excel">Excel</option>
-                                        <option value="CSV">CSV</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Período</label>
-                                    <select @bind="selectedPeriod" @bind:after="UpdateDateRange">
-                                        <option value="ThisMonth">Este Mês</option>
-                                        <option value="LastMonth">Mês Passado</option>
-                                        <option value="LastQuarter">Último Trimestre</option>
-                                        <option value="ThisYear">Este Ano</option>
-                                        <option value="LastYear">Ano Passado</option>
-                                        <option value="Custom">Personalizado</option>
-                                    </select>
-                                </div>
-                            </div>
-                            @if (selectedPeriod == "Custom")
-                            {
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>De:</label>
-                                        <input type="date" @bind="startDate" @bind:format="yyyy-MM-dd" />
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Até:</label>
-                                        <input type="date" @bind="endDate" @bind:format="yyyy-MM-dd" />
-                                    </div>
-                                </div>
-                            }
-                            <div class="form-row">
-                                <button class="generate-report-button" @onclick="GenerateReport" disabled="@isGeneratingReport">
-                                    <span class="button-icon">+</span> 
-                                    @(isGeneratingReport ? "Gerando..." : "Gerar Relatório")
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="collapsed-generation-section">
-                        <div class="section-header">
-                            <h2>Gerar Novo Relatório</h2>
-                            <button class="toggle-form-button" @onclick="ToggleGenerateForm">
-                                Mostrar
-                            </button>
-                        </div>
-                    </div>
-                }
-
-                <!-- Reports List -->
-                <div id="reports_header_section">
-                    <h2 id="reports_main_title">Relatórios Disponíveis</h2>
-                    <div class="reports-filter">
-                        <input type="text" placeholder="Pesquisar relatórios..." @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchReports" />
-                        <select @bind="selectedReportType" @bind:after="FilterReports">
-                            <option value="">Todos os Tipos</option>
-                            <option value="Fluxo de Caixa">Fluxo de Caixa</option>
-                            <option value="Rendimento de Ativos">Rendimento de Ativos</option>
-                            <option value="Análise de Despesas">Análise de Despesas</option>
-                            <option value="Projeção Financeira">Projeção Financeira</option>
-                            <option value="Impostos">Impostos</option>
-                            <option value="Carteira Consolidada">Carteira Consolidada</option>
-                        </select>
                     </div>
                 </div>
 
-                @if (isGeneratingReport)
-                {
-                    <div class="generating-message">
-                        <div class="spinner"></div>
-                        <p>Gerando relatório, por favor aguarde...</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon">👥</div>
+                        </div>
+                        <div class="stat-value">@allUsers.Count</div>
+                        <div class="stat-label">Total de Utilizadores</div>
                     </div>
-                }
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon">👑</div>
+                        </div>
+                        <div class="stat-value">@allUsers.Count(u => u.Cargo == "Administrador")</div>
+                        <div class="stat-label">Administradores</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon">👤</div>
+                        </div>
+                        <div class="stat-value">@allUsers.Count(u => u.Cargo == "Utilizador")</div>
+                        <div class="stat-label">Utilizadores Ativos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon">📊</div>
+                        </div>
+                        <div class="stat-value">@allUsers.Count(u => u.Cargo == "GestorUtilizadores")</div>
+                        <div class="stat-label">Gestores</div>
+                    </div>
+                </div>
 
-                <div id="reports_table_wrapper">
-                    <table id="reports_data_table">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Nome</th>
-                                <th>Tipo</th>
-                                <th>Período</th>
-                                <th>Formato</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (filteredReports.Count == 0)
-                            {
+                <div class="content-section">
+                    <div class="section-header">
+                        <div class="section-title">Gestão de Utilizadores</div>
+                        <div class="section-actions">
+                            <button class="btn btn-primary" @onclick="ExportCSV">
+                                📥 Exportar CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="search-box">
+                        <input type="text"
+                               class="search-input"
+                               placeholder="Pesquisar utilizadores..."
+                               @bind="searchQuery"
+                               @bind:event="oninput"
+                               @onkeyup="@(() => FilterUsers())">
+                        <div class="search-icon">🔍</div>
+                    </div>
+
+                    <div class="table-container">
+                        @if (filteredUsers.Any())
+                        {
+                            <table class="table">
+                                <thead>
                                 <tr>
-                                    <td colspan="7" class="no-reports-message">
-                                        Nenhum relatório encontrado com os filtros atuais.
-                                    </td>
+                                    <th>Utilizador</th>
+                                    <th>Email</th>
+                                    <th>Cargo</th>
+                                    <th>Data Criação</th>
+                                    <th>Ações</th>
                                 </tr>
-                            }
-                            else
-                            {
-                                @foreach (var report in filteredReports)
+                                </thead>
+                                <tbody>
+                                @foreach (var user in filteredUsers)
                                 {
                                     <tr>
-                                        <td>@report.DateGenerated.ToString("dd/MM/yyyy")</td>
-                                        <td>@report.Name</td>
-                                        <td>@report.Type</td>
-                                        <td>@report.Period</td>
-                                        <td class="reports_format">@report.Format</td>
                                         <td>
-                                            <span class="reports_status_badge reports_@report.Status.ToLower()">@report.Status</span>
+                                            <div class="user-cell">
+                                                <div class="user-avatar-small">@GetUserInitials(user.Nome)</div>
+                                                <div class="user-details">
+                                                    <h4>@user.Nome</h4>
+                                                    <p>ID: @user.Id.ToString().Substring(0, 8)...</p>
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td class="reports_actions">
-                                            <button class="reports_btn reports_download" @onclick="() => DownloadReport(report.Id)" title="Baixar">↓</button>
-                                            <button class="reports_btn reports_delete" @onclick="() => DeleteReport(report.Id)" title="Excluir">×</button>
+                                        <td>@user.Email</td>
+                                        <td>
+                                            <div class="role-badge @GetRoleClass(user.Cargo)">
+                                                @GetRoleIcon(user.Cargo) @user.Cargo
+                                            </div>
+                                        </td>
+                                        <td>@DateTime.Now.AddDays(-Random.Shared.Next(1, 365)).ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            <div class="actions-cell">
+                                                <button class="action-btn view" title="Ver detalhes" @onclick="() => ViewUser(user.Id)">👁️</button>
+                                                @if (userRole == "Administrador")
+                                                {
+                                                    <button class="action-btn edit" title="Editar" @onclick="() => EditUser(user.Id)">✏️</button>
+                                                    <button class="action-btn delete" title="Eliminar" @onclick="() => DeleteUser(user.Id)">🗑️</button>
+                                                }
+                                                <button class="action-btn download-assets" title="Download Ativos" @onclick="() => DownloadUserAssetsReport(user.Id)">⬇️</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
-                            }
-                        </tbody>
-                    </table>
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+                                <h3>Nenhum utilizador encontrado</h3>
+                                <p>Tente ajustar os critérios de pesquisa</p>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
-        }
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-@if (showDeleteModal)
-{
-    <div class="modal-overlay">
-        <div class="modal delete-modal">
-            <div class="modal-header">
-                <h2>Confirmar Exclusão</h2>
-                <button class="close-button" @onclick="CloseModal">×</button>
-            </div>
-            <div class="modal-body">
-                <p>Tem certeza que deseja excluir este relatório?</p>
-                <p><strong>@(reportToDelete?.Name)</strong></p>
-                <p>Esta ação não pode ser desfeita.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
-                <button class="delete-button" @onclick="ConfirmDeleteReport">Excluir</button>
-            </div>
         </div>
     </div>
-}
 
-<!-- Download Confirmation Modal -->
-@if (showDownloadModal)
-{
-    <div class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Download Iniciado</h2>
-                <button class="close-button" @onclick="CloseDownloadModal">×</button>
-            </div>
-            <div class="modal-body">
-                <p>O download do relatório <strong>@downloadingReport?.Name</strong> foi iniciado.</p>
-                <p>Caso o download não inicie automaticamente, clique no botão abaixo.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="action-button" @onclick="CloseDownloadModal">Fechar</button>
-                <button class="download-button" @onclick="ForceDownload">Baixar Novamente</button>
-            </div>
-        </div>
-    </div>
-}
-
-@code {
-    [Parameter]
-    public string RequestedReportType { get; set; }
-
-    private bool isLoading = true;
-    private string userName = "Utilizador";
-    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
-    private bool showUserMenu = false;
-    
-    // UI State
-    private bool showGenerateForm = false;
-    private bool isGeneratingReport = false;
-    
-    // Reports Management
-    private List<Report> reports = new List<Report>();
-    private List<Report> filteredReports = new List<Report>();
-    private string searchTerm = "";
-    private string selectedReportType = "";
-    private string selectedPeriod = "ThisMonth";
-    private DateTime startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-    private DateTime endDate = DateTime.Now;
-    
-    // Modal States
-    private bool showDeleteModal = false;
-    private bool showDownloadModal = false;
-    private Report reportToDelete;
-    private Report downloadingReport;
-    private Report newReport = new Report();
-    
-    // Financial Data
-    private List<CarteiraDto> userCarteiras = new List<CarteiraDto>();
-    private List<DepositoDto> depositos = new List<DepositoDto>();
-    private List<FundosInvestimentoDto> fundos = new List<FundosInvestimentoDto>();
-    private List<ImoveisArrendamentoDto> imoveis = new List<ImoveisArrendamentoDto>();
-    
-    // Get dynamic title based on requested report type
-    private string GenerationTitle => string.IsNullOrEmpty(RequestedReportType) 
-        ? "Gerar Novo Relatório" 
-        : $"Gerar Relatório de {RequestedReportType}";
-    
-    protected override async Task OnInitializedAsync()
+    @if (showViewModal && selectedUser != null)
     {
-        await LoadData();
-        
-        // Set filtered reports to all reports initially
-        filteredReports = new List<Report>(reports);
-        
-        // Initialize new report
-        newReport = new Report
-        {
-            Type = string.IsNullOrEmpty(RequestedReportType) ? "Fluxo de Caixa" : RequestedReportType,
-            Format = "PDF",
-            Status = "Pendente"
-        };
-        
-        // If report type is specified in URL, show the generation form
-        showGenerateForm = !string.IsNullOrEmpty(RequestedReportType);
-        
-        // If report type is specified, filter reports to show that type
-        if (!string.IsNullOrEmpty(RequestedReportType))
-        {
-            selectedReportType = RequestedReportType;
-            FilterReports();
-        }
+        <div class="modal-overlay" @onclick="CloseViewModal">
+            <div class="modal-content" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h3>Detalhes do Utilizador</h3>
+                    <button class="modal-close" @onclick="CloseViewModal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="user-detail-card">
+                        <div class="user-avatar-large">@GetUserInitials(selectedUser.Nome)</div>
+                        <div class="user-info-section">
+                            <div class="detail-row">
+                                <label>Nome:</label>
+                                <span>@selectedUser.Nome</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Email:</label>
+                                <span>@selectedUser.Email</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Cargo:</label>
+                                <span class="role-badge @GetRoleClass(selectedUser.Cargo)">
+                                    @GetRoleIcon(selectedUser.Cargo) @selectedUser.Cargo
+                                </span>
+                            </div>
+                            <div class="detail-row">
+                                <label>ID:</label>
+                                <span class="id-text">@selectedUser.Id</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Permissão ID:</label>
+                                <span class="id-text">@selectedUser.PermissaoId</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseViewModal">Fechar</button>
+                    <button class="btn btn-primary" @onclick="() => EditUserFromView(selectedUser.Id)" disabled="@(userRole != "Administrador")">Editar</button>
+                </div>
+            </div>
+        </div>
     }
 
-    private async Task LoadData()
+    @if (showEditModal && editingUser != null)
     {
-        try
-        {
-            isLoading = true;
-            StateHasChanged();
+        <div class="modal-overlay" @onclick="CloseEditModal">
+            <div class="modal-content" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h3>Editar Utilizador</h3>
+                    <button class="modal-close" @onclick="CloseEditModal">×</button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(editErrorMessage))
+                    {
+                        <div class="alert-error">
+                            <span class="alert-icon">!</span>
+                            <span>@editErrorMessage</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(editSuccessMessage))
+                    {
+                        <div class="alert-success">
+                            <span class="alert-icon">✓</span>
+                            <span>@editSuccessMessage</span>
+                        </div>
+                    }
+                    <EditForm Model="@editingUser" OnValidSubmit="SaveUser" class="edit-form">
+                        <DataAnnotationsValidator />
 
-            // Carregar dados do usuário
-            await LoadUserData();
+                        <div class="form-group">
+                            <label for="edit-nome">Nome</label>
+                            <InputText id="edit-nome" class="form-control" @bind-Value="editingUser.Nome" disabled="@isSaving" />
+                            <ValidationMessage For="@(() => editingUser.Nome)" class="validation-message" />
+                        </div>
 
-            // Carregar dados financeiros
-            await LoadFinancialData();
+                        <div class="form-group">
+                            <label for="edit-email">Email</label>
+                            <InputText id="edit-email" class="form-control" @bind-Value="editingUser.Email" disabled="@isSaving" />
+                            <ValidationMessage For="@(() => editingUser.Email)" class="validation-message" />
+                        </div>
 
-            // Gerar relatórios baseados nos dados reais
-            await GenerateReportsFromData();
-        }
-        catch (Exception ex)
+                        <div class="form-group">
+                            <label for="edit-cargo">Cargo</label>
+                            <InputSelect id="edit-cargo" class="form-control" @bind-Value="editingUser.Cargo" disabled="@isSaving">
+                                <option value="Utilizador">Utilizador</option>
+                                <option value="GestorUtilizadores">Gestor de Utilizadores</option>
+                                <option value="Administrador">Administrador</option>
+                            </InputSelect>
+                            <ValidationMessage For="@(() => editingUser.Cargo)" class="validation-message" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-senha">Nova Senha (opcional)</label>
+                            <InputText id="edit-senha" type="password" class="form-control" @bind-Value="editingUser.Senha" placeholder="Deixe em branco para manter a atual" disabled="@isSaving" />
+                            <ValidationMessage For="@(() => editingUser.Senha)" class="validation-message" />
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseEditModal" disabled="@isSaving">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                @if (isSaving)
+                                {
+                                    <span>Guardando...</span>
+                                }
+                                else
+                                {
+                                    <span>Guardar</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<style>
+    .app-container {
+        display: flex;
+        min-height: 100vh;
+        background-color: #f8fafc;
+        color: #334155;
+    }
+
+    .sidebar {
+        width: 250px;
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        color: white;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        height: 100vh;
+    }
+
+    .sidebar-header {
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .sidebar-header h2 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #e2e8f0;
+    }
+
+    .sidebar-nav {
+        flex-grow: 1;
+    }
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        color: #cbd5e1;
+        text-decoration: none;
+        transition: background-color 0.2s, color 0.2s;
+    }
+
+    .nav-item:hover {
+        background-color: #334155;
+        color: white;
+    }
+
+    .nav-item.active {
+        background-color: #3b82f6;
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 12px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        filter: invert(1);
+    }
+
+    .dashboard-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>'); }
+    .portfolio-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v-4h-2Z"></path></svg>'); }
+    .transactions-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'); }
+    .reports-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>'); }
+    .logout-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>'); }
+
+    .sidebar-footer {
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid #334155;
+    }
+
+    .main-content {
+        flex-grow: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f8fafc;
+        color: #334155;
+        line-height: 1.5;
+    }
+
+    .container {
+        padding: 0;
+        width: 100%;
+    }
+
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 20px;
+        border-radius: 50%;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #667eea;
+        animation: spin 1s linear infinite;
+    }
+
+    .loading-spinner p {
+        margin: 0;
+        color: #333;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .access-denied-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .access-denied-message {
+        text-align: center;
+        padding: 3rem;
+        background-color: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        max-width: 500px;
+    }
+
+    .access-denied-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .access-denied-message h2 {
+        color: #e53e3e;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .redirect-button {
+        margin-top: 1.5rem;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .redirect-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .header-left h1 {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .header-left p {
+        color: #64748b;
+        font-size: 16px;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+    }
+
+    .user-info {
+        text-align: right;
+        margin-right: 12px;
+    }
+
+    .user-greeting {
+        font-size: 16px;
+        color: #64748b;
+    }
+
+    .user-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 18px;
+        cursor: pointer;
+    }
+
+    .user-menu {
+        position: absolute;
+        right: 0;
+        top: 60px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 200px;
+        z-index: 100;
+        overflow: hidden;
+    }
+
+    .user-menu-item {
+        display: block;
+        padding: 12px 16px;
+        color: #334155;
+        text-decoration: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .user-menu-item:hover {
+        background-color: #f8fafc;
+    }
+
+    .user-menu-item.logout {
+        color: #e53e3e;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 28px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+    }
+
+    .stat-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .stat-icon {
+        width: 24px;
+        height: 24px;
+        font-size: 20px;
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 6px;
+    }
+
+    .stat-label {
+        font-size: 16px;
+        color: #64748b;
+    }
+
+    .content-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 28px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .section-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        border: none;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #2563eb;
+    }
+
+    .btn-secondary {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background: #e2e8f0;
+    }
+
+    .search-box {
+        position: relative;
+        margin-bottom: 20px;
+        padding: 0 28px;
+    }
+
+    .search-input {
+        width: 100%;
+        max-width: 400px;
+        padding: 14px 18px 14px 46px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 15px;
+        background: #f8fafc;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 40px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 16px;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1000px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 20px 28px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 600;
+        font-size: 15px;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    .table th:first-child {
+        width: 25%;
+        min-width: 200px;
+    }
+
+    .table th:nth-child(2) {
+        width: 25%;
+        min-width: 200px;
+    }
+
+    .table th:nth-child(3) {
+        width: 15%;
+        min-width: 120px;
+    }
+
+    .table th:nth-child(4) {
+        width: 13%;
+        min-width: 110px;
+    }
+
+    .table th:last-child {
+        width: 10%;
+        min-width: 120px;
+    }
+
+    .table td {
+        padding: 20px 28px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 15px;
+        vertical-align: middle;
+    }
+
+    .table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .user-avatar-small {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .user-details h4 {
+        font-weight: 500;
+        color: #1e293b;
+        margin-bottom: 3px;
+        font-size: 15px;
+    }
+
+    .user-details p {
+        font-size: 13px;
+        color: #64748b;
+    }
+
+    .role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .role-administrador {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .role-gestorutilizadores {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    .role-utilizador {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-start;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .action-btn.view {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    .action-btn.edit {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .action-btn.delete {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .action-btn.download-assets {
+        background: #e0f2f7;
+        color: #0284c7;
+    }
+
+    .action-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 28px;
+        color: #64748b;
+    }
+
+    .empty-state h3 {
+        margin-bottom: 12px;
+        color: #475569;
+        font-size: 18px;
+    }
+
+    .empty-state p {
+        font-size: 16px;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px 28px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-header h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #64748b;
+        cursor: pointer;
+        padding: 4px;
+        line-height: 1;
+    }
+
+    .modal-close:hover {
+        color: #1e293b;
+    }
+
+    .modal-body {
+        padding: 28px;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 28px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .user-detail-card {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .user-avatar-large {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 32px;
+        margin: 0 auto;
+    }
+
+    .user-info-section {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-row label {
+        font-weight: 600;
+        color: #475569;
+        min-width: 120px;
+    }
+
+    .detail-row span {
+        color: #1e293b;
+        text-align: right;
+    }
+
+    .id-text {
+        font-family: monospace;
+        font-size: 13px;
+        background: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+
+    .edit-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #475569;
+        font-size: 14px;
+    }
+
+    .form-control {
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-control:disabled {
+        background: #f8fafc;
+        color: #64748b;
+    }
+
+    .validation-message {
+        color: #dc2626;
+        font-size: 13px;
+        margin-top: 4px;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: 1px solid #b8dabc;
+        border-left: 4px solid #28a745;
+        color: #155724;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+        display: flex;
+        align-items: center;
+    }
+
+    .alert-error {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border: 1px solid #f1b0b7;
+        border-left: 4px solid #dc3545;
+        color: #721c24;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
+        display: flex;
+        align-items: center;
+    }
+
+    .alert-icon {
+        font-size: 18px;
+        font-weight: bold;
+        margin-right: 12px;
+        min-width: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .alert-success .alert-icon {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border: 2px solid rgba(40, 167, 69, 0.2);
+    }
+
+    .alert-error .alert-icon {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 2px solid rgba(220, 53, 69, 0.2);
+    }
+
+    .alert-success span:not(.alert-icon),
+    .alert-error span:not(.alert-icon) {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 1.4;
+        flex: 1;
+    }
+    
+</style>
+
+@code {
+    private List<CarteiraDto> allCarteiraEntries = new List<CarteiraDto>();
+    private List<AtivosFinanceiroDto> allAtivosFinanceiros = new List<AtivosFinanceiroDto>();
+    private List<DepositoDto> allDepositos = new List<DepositoDto>();
+    private List<FundosInvestimentoDto> allFundos = new List<FundosInvestimentoDto>();
+    private List<ImoveisArrendamentoDto> allImoveis = new List<ImoveisArrendamentoDto>();
+    private List<LocalizacoDto> allLocalizacoes = new List<LocalizacoDto>();
+
+    private bool isLoading = true;
+    private bool hasAccess = false;
+    private string userName = "Utilizador";
+    private string userRole = "";
+    private bool showUserMenu = false;
+
+    private string searchQuery = "";
+    private List<UtilizadoreDto> filteredUsers = new List<UtilizadoreDto>();
+    private List<UtilizadoreDto> allUsers = new List<UtilizadoreDto>();
+
+    private bool showViewModal = false;
+    private bool showEditModal = false;
+    private UtilizadoreDto? selectedUser = null;
+    private UtilizadoreDto? editingUser = null;
+    private bool isSaving = false;
+    private string editErrorMessage = "";
+    private string editSuccessMessage = "";
+
+    public class AtivosFinanceiroDto
+    {
+        public Guid Id { get; set; }
+        public string Tipo { get; set; }
+        public DateTime DataInicio { get; set; }
+        public float TaxaPercentagem { get; set; }
+    }
+
+    public class CarteiraDto
+    {
+        public Guid Id { get; set; }
+        public Guid UtilizadorId { get; set; }
+        public Guid AtivoId { get; set; }
+        public DateTime DataInicio { get; set; }
+        public float Montante { get; set; }
+    }
+
+    public class DepositoDto
+    {
+        public Guid Id { get; set; }
+        public Guid AtivoId { get; set; }
+        public float MontanteInicial { get; set; }
+    }
+
+    public class FundosInvestimentoDto
+    {
+        public Guid Id { get; set; }
+        public Guid AtivoId { get; set; }
+        public string NomeFundo { get; set; }
+    }
+
+    public class ImoveisArrendamentoDto
+    {
+        public Guid Id { get; set; }
+        public Guid AtivoId { get; set; }
+        public Guid LocalizacaoId { get; set; }
+        public float Area { get; set; }
+    }
+
+    public class LocalizacoDto
+    {
+        public Guid Id { get; set; }
+        public string Morada { get; set; }
+        public string CodigoPostal { get; set; }
+        public string Cidade { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserData();
+        await LoadAllUsers();
+        await LoadAllFinancialData();
+
+        hasAccess = userRole == "Administrador" || userRole == "GestorUtilizadores";
+
+        if (userRole == "Utilizador")
         {
-            Console.WriteLine($"Erro ao carregar dados: {ex.Message}");
+            NavigationManager.NavigateTo("/main", forceLoad: true);
+            return;
         }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
+
+        filteredUsers = allUsers.ToList();
+        isLoading = false;
     }
 
     private async Task LoadUserData()
     {
         try
         {
-            if (UserStateService.UserId != Guid.Empty)
+            Console.WriteLine($"Carregando dados para UserId: {UserStateService.UserId}");
+
+            var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+            if (response.IsSuccessStatusCode)
             {
-                var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
-                if (response.IsSuccessStatusCode)
+                var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+                if (user != null)
                 {
-                    var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
-                    if (user != null)
-                    {
-                        userName = user.Nome ?? "Utilizador";
-                    }
+                    userName = user.Nome ?? "Utilizador";
+                    userRole = user.Cargo ?? "Utilizador";
+
+                    Console.WriteLine($"Dados carregados - Nome: {userName}, Cargo: {userRole}");
+                    StateHasChanged();
                 }
+            }
+            else
+            {
+                Console.WriteLine($"Erro na API: {response.StatusCode}");
             }
         }
         catch (Exception ex)
@@ -388,363 +1265,441 @@
         }
     }
 
-    private async Task LoadFinancialData()
+    private async Task LoadAllUsers()
     {
         try
         {
-            // Carregar carteiras do usuário
-            var carteirasResponse = await Http.GetAsync("http://localhost:5189/api/Carteira");
-            if (carteirasResponse.IsSuccessStatusCode)
+            var response = await Http.GetAsync("http://localhost:5189/api/Utilizadore");
+            if (response.IsSuccessStatusCode)
             {
-                var allCarteiras = await carteirasResponse.Content.ReadFromJsonAsync<List<CarteiraDto>>();
-                userCarteiras = allCarteiras?.Where(c => c.UtilizadorId == UserStateService.UserId).ToList() ?? new List<CarteiraDto>();
-            }
-
-            // Carregar depósitos
-            var depositosResponse = await Http.GetAsync("http://localhost:5189/api/Deposito");
-            if (depositosResponse.IsSuccessStatusCode)
-            {
-                depositos = await depositosResponse.Content.ReadFromJsonAsync<List<DepositoDto>>() ?? new List<DepositoDto>();
-            }
-
-            // Carregar fundos
-            var fundosResponse = await Http.GetAsync("http://localhost:5189/api/FundosInvestimentos");
-            if (fundosResponse.IsSuccessStatusCode)
-            {
-                fundos = await fundosResponse.Content.ReadFromJsonAsync<List<FundosInvestimentoDto>>() ?? new List<FundosInvestimentoDto>();
-            }
-
-            // Carregar imóveis
-            var imoveisResponse = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
-            if (imoveisResponse.IsSuccessStatusCode)
-            {
-                imoveis = await imoveisResponse.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>() ?? new List<ImoveisArrendamentoDto>();
+                allUsers = await response.Content.ReadFromJsonAsync<List<UtilizadoreDto>>() ?? new List<UtilizadoreDto>();
+                filteredUsers = allUsers.ToList();
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao carregar dados financeiros: {ex.Message}");
+            Console.WriteLine($"Erro ao carregar usuários: {ex.Message}");
         }
     }
 
-    private async Task GenerateReportsFromData()
+    private async Task LoadAllFinancialData()
     {
-        reports.Clear();
-
-        // Gerar relatórios baseados nos dados reais do usuário
-        if (userCarteiras.Any())
+        try
         {
-            // Relatório de Carteira Consolidada
-            reports.Add(new Report
+            Console.WriteLine("[DEBUG] LoadAllFinancialData - Carregando todos os dados financeiros");
+
+            var carteirasResponse = await Http.GetAsync("http://localhost:5189/api/Carteira");
+            if (carteirasResponse.IsSuccessStatusCode)
             {
-                Id = reports.Count + 1,
-                Name = $"Carteira Consolidada - {DateTime.Now.ToString("MMMM yyyy", new CultureInfo("pt-PT"))}",
-                Type = "Carteira Consolidada",
-                Period = DateTime.Now.ToString("MMMM yyyy", new CultureInfo("pt-PT")),
-                Format = "PDF",
-                DateGenerated = DateTime.Now.AddDays(-Random.Shared.Next(1, 30)),
-                Status = "Concluído"
-            });
-        }
+                allCarteiraEntries = await carteirasResponse.Content.ReadFromJsonAsync<List<CarteiraDto>>() ?? new List<CarteiraDto>();
+            }
 
-        if (depositos.Any())
-        {
-            // Relatório de Depósitos
-            reports.Add(new Report
+            var ativosResponse = await Http.GetAsync("http://localhost:5189/api/AtivosFinanceiros");
+            if (ativosResponse.IsSuccessStatusCode)
             {
-                Id = reports.Count + 1,
-                Name = $"Rendimento de Depósitos - {DateTime.Now.AddMonths(-1).ToString("MMMM yyyy", new CultureInfo("pt-PT"))}",
-                Type = "Rendimento de Ativos",
-                Period = DateTime.Now.AddMonths(-1).ToString("MMMM yyyy", new CultureInfo("pt-PT")),
-                Format = "Excel",
-                DateGenerated = DateTime.Now.AddDays(-Random.Shared.Next(5, 15)),
-                Status = "Concluído"
-            });
-        }
+                allAtivosFinanceiros = await ativosResponse.Content.ReadFromJsonAsync<List<AtivosFinanceiroDto>>() ?? new List<AtivosFinanceiroDto>();
+            }
 
-        if (fundos.Any())
-        {
-            // Relatório de Fundos
-            reports.Add(new Report
+            var depositosResponse = await Http.GetAsync("http://localhost:5189/api/Deposito");
+            if (depositosResponse.IsSuccessStatusCode)
             {
-                Id = reports.Count + 1,
-                Name = $"Análise de Fundos de Investimento - Q1 {DateTime.Now.Year}",
-                Type = "Rendimento de Ativos",
-                Period = $"Q1 {DateTime.Now.Year}",
-                Format = "PDF",
-                DateGenerated = DateTime.Now.AddDays(-Random.Shared.Next(10, 25)),
-                Status = "Concluído"
-            });
-        }
+                allDepositos = await depositosResponse.Content.ReadFromJsonAsync<List<DepositoDto>>() ?? new List<DepositoDto>();
+            }
 
-        if (imoveis.Any())
-        {
-            // Relatório de Imóveis
-            reports.Add(new Report
+            var fundosResponse = await Http.GetAsync("http://localhost:5189/api/FundosInvestimentos");
+            if (fundosResponse.IsSuccessStatusCode)
             {
-                Id = reports.Count + 1,
-                Name = $"Fluxo de Caixa Imobiliário - {DateTime.Now.ToString("MMMM yyyy", new CultureInfo("pt-PT"))}",
-                Type = "Fluxo de Caixa",
-                Period = DateTime.Now.ToString("MMMM yyyy", new CultureInfo("pt-PT")),
-                Format = "Excel",
-                DateGenerated = DateTime.Now.AddDays(-Random.Shared.Next(3, 12)),
-                Status = "Concluído"
-            });
+                allFundos = await fundosResponse.Content.ReadFromJsonAsync<List<FundosInvestimentoDto>>() ?? new List<FundosInvestimentoDto>();
+            }
+
+            var imoveisResponse = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
+            if (imoveisResponse.IsSuccessStatusCode)
+            {
+                allImoveis = await imoveisResponse.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>() ?? new List<ImoveisArrendamentoDto>();
+            }
+
+            var localizacoesResponse = await Http.GetAsync("http://localhost:5189/api/Localizacoes");
+            if (localizacoesResponse.IsSuccessStatusCode)
+            {
+                allLocalizacoes = await localizacoesResponse.Content.ReadFromJsonAsync<List<LocalizacoDto>>() ?? new List<LocalizacoDto>();
+            }
+
+            Console.WriteLine("[DEBUG] LoadAllFinancialData - Carregamento de todos os dados financeiros concluído.");
         }
-
-        // Relatório de Impostos (sempre disponível)
-        reports.Add(new Report
+        catch (Exception ex)
         {
-            Id = reports.Count + 1,
-            Name = $"Relatório de Impostos - {DateTime.Now.Year - 1}",
-            Type = "Impostos",
-            Period = $"Ano {DateTime.Now.Year - 1}",
-            Format = "PDF",
-            DateGenerated = new DateTime(DateTime.Now.Year, 3, 15),
-            Status = "Concluído"
-        });
-
-        // Projeção Financeira
-        reports.Add(new Report
-        {
-            Id = reports.Count + 1,
-            Name = $"Projeção Financeira - {DateTime.Now.Year}",
-            Type = "Projeção Financeira",
-            Period = $"Ano {DateTime.Now.Year}",
-            Format = "Excel",
-            DateGenerated = DateTime.Now.AddDays(-Random.Shared.Next(20, 40)),
-            Status = "Concluído"
-        });
+            Console.WriteLine($"[ERROR] LoadAllFinancialData - Erro ao carregar todos os dados financeiros: {ex.Message}");
+        }
     }
-    
+
+    // CORREÇÃO DA PESQUISA - MÉTODO PRINCIPAL
+    private void FilterUsers()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredUsers = allUsers.ToList();
+        }
+        else
+        {
+            var query = searchQuery.ToLower().Trim();
+            filteredUsers = allUsers.Where(u =>
+                (!string.IsNullOrEmpty(u.Nome) && u.Nome.ToLower().Contains(query)) ||
+                (!string.IsNullOrEmpty(u.Email) && u.Email.ToLower().Contains(query)) ||
+                (!string.IsNullOrEmpty(u.Cargo) && u.Cargo.ToLower().Contains(query))
+            ).ToList();
+        }
+        StateHasChanged();
+    }
+
+    private string GetUserInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "U";
+        return string.Join("", name.Split(' ').Select(n => n[0]));
+    }
+
+    private string GetRoleIcon(string role)
+    {
+        return role switch
+        {
+            "Administrador" => "👑",
+            "GestorUtilizadores" => "👥",
+            "Utilizador" => "👤",
+            _ => "👤"
+        };
+    }
+
+    private string GetRoleClass(string cargo)
+    {
+        return cargo switch
+        {
+            "Administrador" => "role-administrador",
+            "GestorUtilizadores" => "role-gestorutilizadores",
+            _ => "role-utilizador"
+        };
+    }
+
     private void ToggleUserMenu()
     {
         showUserMenu = !showUserMenu;
     }
-    
-    private void ToggleGenerateForm()
+
+    private void ViewUser(Guid id)
     {
-        showGenerateForm = !showGenerateForm;
-    }
-    
-    private void Logout()
-    {
-        UserStateService.UserId = Guid.Empty;
-        NavigationManager.NavigateTo("/");
-    }
-    
-    private void UpdateDateRange()
-    {
-        // Set date range based on selected period
-        switch (selectedPeriod)
+        selectedUser = allUsers.Find(u => u.Id == id);
+        if (selectedUser != null)
         {
-            case "ThisMonth":
-                startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-                endDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month));
-                break;
-            case "LastMonth":
-                var lastMonth = DateTime.Now.AddMonths(-1);
-                startDate = new DateTime(lastMonth.Year, lastMonth.Month, 1);
-                endDate = new DateTime(lastMonth.Year, lastMonth.Month, DateTime.DaysInMonth(lastMonth.Year, lastMonth.Month));
-                break;
-            case "LastQuarter":
-                int currentQuarter = (DateTime.Now.Month - 1) / 3 + 1;
-                int lastQuarter = currentQuarter - 1;
-                int year = DateTime.Now.Year;
-                if (lastQuarter < 1)
-                {
-                    lastQuarter = 4;
-                    year -= 1;
-                }
-                startDate = new DateTime(year, (lastQuarter - 1) * 3 + 1, 1);
-                endDate = new DateTime(year, lastQuarter * 3, DateTime.DaysInMonth(year, lastQuarter * 3));
-                break;
-            case "ThisYear":
-                startDate = new DateTime(DateTime.Now.Year, 1, 1);
-                endDate = new DateTime(DateTime.Now.Year, 12, 31);
-                break;
-            case "LastYear":
-                startDate = new DateTime(DateTime.Now.Year - 1, 1, 1);
-                endDate = new DateTime(DateTime.Now.Year - 1, 12, 31);
-                break;
-            case "Custom":
-                // Use the user-defined date range
-                break;
+            showViewModal = true;
         }
     }
-    
-    private string GetPeriodName()
+
+    private void CloseViewModal()
     {
-        // Format the period name for the report based on selected period
-        switch (selectedPeriod)
+        showViewModal = false;
+        selectedUser = null;
+    }
+
+    private void EditUser(Guid id)
+    {
+        if (userRole != "Administrador") return;
+
+        var user = allUsers.Find(u => u.Id == id);
+        if (user != null)
         {
-            case "ThisMonth":
-                return DateTime.Now.ToString("MMMM yyyy", new CultureInfo("pt-PT"));
-            case "LastMonth":
-                return DateTime.Now.AddMonths(-1).ToString("MMMM yyyy", new CultureInfo("pt-PT"));
-            case "LastQuarter":
-                int currentQuarter = (DateTime.Now.Month - 1) / 3 + 1;
-                int lastQuarter = currentQuarter - 1;
-                int year = DateTime.Now.Year;
-                if (lastQuarter < 1)
-                {
-                    lastQuarter = 4;
-                    year -= 1;
-                }
-                return $"Q{lastQuarter} {year}";
-            case "ThisYear":
-                return $"Ano {DateTime.Now.Year}";
-            case "LastYear":
-                return $"Ano {DateTime.Now.Year - 1}";
-            case "Custom":
-                if (startDate.Year == endDate.Year && startDate.Month == endDate.Month)
-                {
-                    return startDate.ToString("MMMM yyyy", new CultureInfo("pt-PT"));
-                }
-                else if (startDate.Year == endDate.Year)
-                {
-                    return $"{startDate.ToString("MMMM", new CultureInfo("pt-PT"))} a {endDate.ToString("MMMM yyyy", new CultureInfo("pt-PT"))}";
-                }
-                else
-                {
-                    return $"{startDate.ToString("MMMM yyyy", new CultureInfo("pt-PT"))} a {endDate.ToString("MMMM yyyy", new CultureInfo("pt-PT"))}";
-                }
+            editingUser = new UtilizadoreDto
+            {
+                Id = user.Id,
+                Nome = user.Nome,
+                Email = user.Email,
+                Cargo = user.Cargo,
+                PermissaoId = user.PermissaoId,
+                Senha = ""
+            };
+            editErrorMessage = "";
+            editSuccessMessage = "";
+            showEditModal = true;
         }
-        return "";
     }
-    
-    private void SearchReports()
+
+    private void EditUserFromView(Guid id)
     {
-        ApplyFilters();
+        if (userRole != "Administrador") return;
+
+        CloseViewModal();
+        EditUser(id);
     }
-    
-    private void FilterReports()
+
+    private void CloseEditModal()
     {
-        ApplyFilters();
+        showEditModal = false;
+        editingUser = null;
+        editErrorMessage = "";
+        editSuccessMessage = "";
     }
-    
-    private void ApplyFilters()
+
+    private async Task SaveUser()
     {
-        filteredReports = reports.Where(r => 
-            (string.IsNullOrWhiteSpace(searchTerm) || 
-             r.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-             r.Type.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-             r.Period.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
-            (string.IsNullOrWhiteSpace(selectedReportType) || r.Type == selectedReportType)
-        ).ToList();
-    }
-    
-    private async Task GenerateReport()
-    {
+        if (userRole != "Administrador") return;
+        if (editingUser == null) return;
+
+        isSaving = true;
+        editErrorMessage = "";
+        editSuccessMessage = "";
+        StateHasChanged();
+
         try
         {
-            isGeneratingReport = true;
-            StateHasChanged();
-            
-            UpdateDateRange();
-            var reportPeriod = GetPeriodName();
-            var reportName = $"{newReport.Type} - {reportPeriod}";
-            
-            // Simular geração do relatório baseado nos dados reais
-            await Task.Delay(2000);
-            
-            var report = new Report
+            var response = await Http.PutAsJsonAsync($"http://localhost:5189/api/Utilizadore/{editingUser.Id}", editingUser);
+
+            if (response.IsSuccessStatusCode)
             {
-                Id = reports.Count > 0 ? reports.Max(r => r.Id) + 1 : 1,
-                Name = reportName,
-                Type = newReport.Type,
-                Period = reportPeriod,
-                Format = newReport.Format,
-                DateGenerated = DateTime.Now,
-                Status = "Concluído"
-            };
-            
-            reports.Add(report);
-            ApplyFilters();
-            showGenerateForm = false;
-            
-            // Auto-download
-            await Task.Delay(200);
-            DownloadReport(report.Id);
+                editSuccessMessage = "Utilizador atualizado com sucesso!";
+
+                var userIndex = allUsers.FindIndex(u => u.Id == editingUser.Id);
+                if (userIndex >= 0)
+                {
+                    allUsers[userIndex].Nome = editingUser.Nome;
+                    allUsers[userIndex].Email = editingUser.Email;
+                    allUsers[userIndex].Cargo = editingUser.Cargo;
+                    allUsers[userIndex].PermissaoId = editingUser.PermissaoId;
+                }
+
+                FilterUsers();
+
+                await Task.Delay(2000);
+                CloseEditModal();
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                editErrorMessage = $"Erro ao atualizar utilizador: {response.StatusCode}";
+                Console.WriteLine($"Erro da API: {errorContent}");
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao gerar relatório: {ex.Message}");
+            editErrorMessage = "Erro inesperado ao atualizar utilizador.";
+            Console.WriteLine($"Erro: {ex.Message}");
         }
         finally
         {
-            isGeneratingReport = false;
+            isSaving = false;
             StateHasChanged();
         }
     }
-    
-    private void DownloadReport(int id)
+
+    private async Task DeleteUser(Guid id)
     {
-        downloadingReport = reports.FirstOrDefault(r => r.Id == id);
-        if (downloadingReport != null)
+        if (userRole != "Administrador") return;
+
+        var user = allUsers.Find(u => u.Id == id);
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Tem certeza que deseja eliminar o utilizador {user?.Nome} e todos os seus dados relacionados?");
+
+        if (confirmed)
         {
-            showDownloadModal = true;
+            try
+            {
+                Console.WriteLine($"[DEBUG] Iniciando exclusão em cascata para o utilizador: {id}");
+
+                var userCarteiras = allCarteiraEntries.Where(c => c.UtilizadorId == id).ToList();
+
+                foreach (var carteira in userCarteiras)
+                {
+                    var ativo = allAtivosFinanceiros.FirstOrDefault(a => a.Id == carteira.AtivoId);
+
+                    if (ativo != null)
+                    {
+                        switch (ativo.Tipo)
+                        {
+                            case "deposito":
+                                var depositoToDelete = allDepositos.FirstOrDefault(d => d.AtivoId == ativo.Id);
+                                if (depositoToDelete != null)
+                                {
+                                    var deleteDepositoResponse = await Http.DeleteAsync($"http://localhost:5189/api/Deposito/{depositoToDelete.Id}");
+                                    if (deleteDepositoResponse.IsSuccessStatusCode)
+                                    {
+                                        Console.WriteLine($"[DEBUG] Depósito excluído: {depositoToDelete.Id}");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($"[ERROR] Falha ao excluir Depósito {depositoToDelete.Id}: {deleteDepositoResponse.StatusCode}");
+                                    }
+                                }
+                                break;
+                            case "fundo_investimento":
+                                var fundoToDelete = allFundos.FirstOrDefault(f => f.AtivoId == ativo.Id);
+                                if (fundoToDelete != null)
+                                {
+                                    var deleteFundoResponse = await Http.DeleteAsync($"http://localhost:5189/api/FundosInvestimentos/{fundoToDelete.Id}");
+                                    if (deleteFundoResponse.IsSuccessStatusCode)
+                                    {
+                                        Console.WriteLine($"[DEBUG] Fundo de Investimento excluído: {fundoToDelete.Id}");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($"[ERROR] Falha ao excluir Fundo de Investimento {fundoToDelete.Id}: {deleteFundoResponse.StatusCode}");
+                                    }
+                                }
+                                break;
+                            case "imovel_arrendado":
+                                var imovelToDelete = allImoveis.FirstOrDefault(i => i.AtivoId == ativo.Id);
+                                if (imovelToDelete != null)
+                                {
+                                    var deleteImovelResponse = await Http.DeleteAsync($"http://localhost:5189/api/ImoveisArrendamento/{imovelToDelete.Id}");
+                                    if (deleteImovelResponse.IsSuccessStatusCode)
+                                    {
+                                        Console.WriteLine($"[DEBUG] Imóvel Arrendado excluído: {imovelToDelete.Id}");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($"[ERROR] Falha ao excluir Imóvel Arrendado {imovelToDelete.Id}: {deleteImovelResponse.StatusCode}");
+                                    }
+                                }
+                                break;
+                        }
+
+                        var deleteAtivoResponse = await Http.DeleteAsync($"http://localhost:5189/api/AtivosFinanceiros/{ativo.Id}");
+                        if (deleteAtivoResponse.IsSuccessStatusCode)
+                        {
+                            Console.WriteLine($"[DEBUG] Ativo Financeiro excluído: {ativo.Id}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[ERROR] Falha ao excluir Ativo Financeiro {ativo.Id}: {deleteAtivoResponse.StatusCode}");
+                        }
+                    }
+
+                    var deleteCarteiraResponse = await Http.DeleteAsync($"http://localhost:5189/api/Carteira/{carteira.Id}");
+                    if (deleteCarteiraResponse.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"[DEBUG] Carteira excluída: {carteira.Id}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[ERROR] Falha ao excluir Carteira {carteira.Id}: {deleteCarteiraResponse.StatusCode}");
+                    }
+                }
+
+                var deleteUserResponse = await Http.DeleteAsync($"http://localhost:5189/api/Utilizadore/{id}");
+                if (deleteUserResponse.IsSuccessStatusCode)
+                {
+                    allUsers.RemoveAll(u => u.Id == id);
+                    FilterUsers();
+                    await JSRuntime.InvokeVoidAsync("alert", "Utilizador e todos os seus dados relacionados eliminados com sucesso!");
+                    Console.WriteLine($"[DEBUG] Utilizador excluído: {id}");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Erro ao eliminar utilizador principal.");
+                    Console.WriteLine($"[ERROR] Falha ao excluir Utilizador {id}: {deleteUserResponse.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Erro inesperado durante a exclusão em cascata: {ex.Message}");
+                await JSRuntime.InvokeVoidAsync("alert", "Erro inesperado ao eliminar utilizador e dados relacionados. Verifique o console para mais detalhes.");
+            }
         }
     }
-    
-    private void ForceDownload()
+
+    private async Task ExportCSV()
     {
-        CloseDownloadModal();
-    }
-    
-    private void DeleteReport(int id)
-    {
-        reportToDelete = reports.FirstOrDefault(r => r.Id == id);
-        if (reportToDelete != null)
+        var csvContent = new StringBuilder();
+        csvContent.AppendLine("Nome,Email,Cargo,Data Criação");
+
+        foreach (var user in filteredUsers)
         {
-            showDeleteModal = true;
+            var dataCriacao = DateTime.Now.AddDays(-Random.Shared.Next(1, 365)).ToString("dd/MM/yyyy");
+            csvContent.AppendLine($"{user.Nome},{user.Email},{user.Cargo},{dataCriacao}");
+        }
+
+        var fileName = $"utilizadores_{DateTime.Now:yyyy-MM-dd}.csv";
+        var bytes = Encoding.UTF8.GetBytes(csvContent.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, base64, "text/csv");
+    }
+
+    private async Task DownloadUserAssetsReport(Guid userId)
+    {
+        try
+        {
+            var user = allUsers.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Utilizador não encontrado para gerar o relatório de ativos.");
+                return;
+            }
+
+            var carteiraResponse = await Http.GetAsync("http://localhost:5189/api/Carteira");
+            if (!carteiraResponse.IsSuccessStatusCode)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Erro ao carregar carteira: {carteiraResponse.StatusCode}");
+                return;
+            }
+            var allCarteiraEntries = await carteiraResponse.Content.ReadFromJsonAsync<List<CarteiraDto>>() ?? new List<CarteiraDto>();
+            var userCarteiraEntries = allCarteiraEntries.Where(c => c.UtilizadorId == userId).ToList();
+
+            if (!userCarteiraEntries.Any())
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Nenhum ativo financeiro encontrado para {user.Nome}.");
+                return;
+            }
+
+            var csvContent = new StringBuilder();
+            csvContent.AppendLine($"RELATÓRIO DE ATIVOS FINANCEIROS - {user.Nome}");
+            csvContent.AppendLine($"Gerado em: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+            csvContent.AppendLine("");
+            csvContent.AppendLine("Tipo de Ativo,Data Início Ativo,Taxa Percentagem Ativo,Montante na Carteira,Data Início na Carteira");
+
+            foreach (var carteiraEntry in userCarteiraEntries)
+            {
+                var ativoResponse = await Http.GetAsync($"http://localhost:5189/api/AtivosFinanceiros/{carteiraEntry.AtivoId}");
+                if (!ativoResponse.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Erro ao carregar ativo financeiro {carteiraEntry.AtivoId}: {ativoResponse.StatusCode}");
+                    continue;
+                }
+                var ativo = await ativoResponse.Content.ReadFromJsonAsync<AtivosFinanceiroDto>();
+
+                if (ativo != null)
+                {
+                    csvContent.AppendLine($"{ativo.Tipo},{ativo.DataInicio:dd/MM/yyyy},{ativo.TaxaPercentagem:F2}%,{carteiraEntry.Montante:C2},{carteiraEntry.DataInicio:dd/MM/yyyy}");
+                }
+            }
+
+            var fileName = $"ativos_financeiros_{user.Nome.Replace(" ", "_")}_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
+            var bytes = Encoding.UTF8.GetBytes(csvContent.ToString());
+            var base64 = Convert.ToBase64String(bytes);
+
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, base64, "text/csv");
+            await JSRuntime.InvokeVoidAsync("alert", $"Relatório de ativos financeiros gerado com sucesso para {user.Nome}!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao gerar relatório de ativos: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", "Erro inesperado ao gerar relatório de ativos. Verifique o console para mais detalhes.");
         }
     }
-    
-    private void ConfirmDeleteReport()
+
+    private void RedirectToMain()
     {
-        if (reportToDelete != null)
-        {
-            reports.Remove(reportToDelete);
-            filteredReports.Remove(reportToDelete);
-            CloseModal();
-        }
+        NavigationManager.NavigateTo("/main");
     }
-    
-    private void CloseModal()
+
+    private void Logout()
     {
-        showDeleteModal = false;
-    }
-    
-    private void CloseDownloadModal()
-    {
-        showDownloadModal = false;
-        downloadingReport = null;
-    }
-    
-    // Report class
-    public class Report
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string Period { get; set; } = string.Empty;
-        public string Format { get; set; } = string.Empty;
-        public DateTime DateGenerated { get; set; }
-        public string Status { get; set; } = string.Empty; // "Pendente", "Concluído", "Erro"
+        UserStateService.UserId = Guid.Empty;
+        NavigationManager.NavigateTo("/", forceLoad: true);
     }
 }
 
-<style>
-    .loading-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 50vh;
-    }
-
-    .loading-spinner {
-        text-align: center;
-        padding: 2rem;
-    }
-</style>
+<script>
+    window.downloadFile = (filename, base64, contentType) => {
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = `data:${contentType};base64,${base64}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+</script>

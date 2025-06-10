@@ -28,6 +28,14 @@
                 <span>@successMessage</span>
             </div>
         }
+
+        @if (isCheckingConnection)
+        {
+            <div class="alert-info">
+                <span class="alert-icon">🔄</span>
+                <span>Verificando conexão com o servidor...</span>
+            </div>
+        }
         
         <EditForm Model="@registerModel" OnValidSubmit="HandleRegistration" class="login-form">
             <DataAnnotationsValidator />
@@ -47,8 +55,9 @@
             <div class="form-row">
                 <div class="form-group form-group-half">
                     <label for="password">Senha</label>
-                    <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" placeholder="Escolha uma senha" disabled="@isSubmitting" />
+                    <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" placeholder="Mínimo 6 caracteres" disabled="@isSubmitting" />
                     <ValidationMessage For="@(() => registerModel.Password)" class="validation-message" />
+                    <small class="form-text">A senha deve ter pelo menos 6 caracteres</small>
                 </div>
                 
                 <div class="form-group form-group-half">
@@ -59,10 +68,14 @@
             </div>
             
             <br/>
-            <button type="submit" class="login-button" disabled="@isSubmitting">
+            <button type="submit" class="login-button" disabled="@(isSubmitting || isCheckingConnection || !isApiAvailable)">
                 @if (isSubmitting)
                 {
                     <span>Criando conta...</span>
+                }
+                else if (!isApiAvailable)
+                {
+                    <span>Servidor indisponível</span>
                 }
                 else
                 {
@@ -86,42 +99,99 @@
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
     private bool isSubmitting = false;
+    private bool isCheckingConnection = false;
+    private bool isApiAvailable = false;
+    private string apiBaseUrl = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckApiConnection();
+    }
+
+    private async Task CheckApiConnection()
+    {
+        isCheckingConnection = true;
+        StateHasChanged();
+
+        var possibleUrls = new[]
+        {
+            "http://localhost:5189",
+            "http://localhost:5000",
+            "http://localhost:5001",
+            "https://localhost:7000",
+            "https://localhost:7001"
+        };
+
+        foreach (var url in possibleUrls)
+        {
+            try
+            {
+                var response = await Http.GetAsync($"{url}/api/Utilizadore");
+                if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    apiBaseUrl = url;
+                    isApiAvailable = true;
+                    break;
+                }
+            }
+            catch
+            {
+                // Continua para a próxima URL
+            }
+        }
+
+        if (!isApiAvailable)
+        {
+            errorMessage = "Não foi possível conectar ao servidor. Verifique se a API está rodando.";
+        }
+
+        isCheckingConnection = false;
+        StateHasChanged();
+    }
     
     private async Task HandleRegistration()
     {
+        if (!isApiAvailable)
+        {
+            errorMessage = "Servidor não disponível. Tente novamente mais tarde.";
+            return;
+        }
+
         isSubmitting = true;
         errorMessage = string.Empty;
         successMessage = string.Empty;
+        StateHasChanged();
         
         try
         {
-            // Validar se as senhas coincidem
+            // Validações adicionais
+            if (!IsValidEmail(registerModel.Email))
+            {
+                errorMessage = "Por favor, insira um email válido.";
+                return;
+            }
+
             if (registerModel.Password != registerModel.ConfirmPassword)
             {
                 errorMessage = "As senhas não coincidem.";
                 return;
             }
 
-            // Primeiro, vamos buscar uma permissão existente
-            Guid? permissaoId = null;
-            try
+            if (registerModel.Password.Length < 6)
             {
-                var permissoesResponse = await Http.GetAsync("http://localhost:5189/api/Permisso");
-                if (permissoesResponse.IsSuccessStatusCode)
-                {
-                    var permissoes = await permissoesResponse.Content.ReadFromJsonAsync<List<PermissoDto>>();
-                    if (permissoes != null && permissoes.Any())
-                    {
-                        // Usar a primeira permissão disponível ou criar uma lógica específica
-                        permissaoId = permissoes.First().Id;
-                    }
-                }
+                errorMessage = "A senha deve ter pelo menos 6 caracteres.";
+                return;
             }
-            catch (Exception ex)
+
+            // Verificar se o email já existe
+            if (await EmailAlreadyExists(registerModel.Email))
             {
-                Console.WriteLine($"Erro ao buscar permissões: {ex.Message}");
-                // Se não conseguir buscar permissões, vamos tentar sem PermissaoId
+                errorMessage = "Este email já está registrado no sistema.";
+                return;
             }
+
+            // Buscar permissão padrão
+            var permissaoId = await GetDefaultPermission();
 
             // Criar objeto do novo utilizador
             var newUser = new UtilizadoreDto
@@ -129,19 +199,19 @@
                 Id = Guid.NewGuid(),
                 Nome = registerModel.Name?.Trim(),
                 Email = registerModel.Email?.Trim()?.ToLowerInvariant(),
-                Senha = registerModel.Password, // A API deve fazer o hash
-                Cargo = "Utilizador", // Cargo padrão
-                PermissaoId = permissaoId // Pode ser null se não encontrou permissões
+                Senha = registerModel.Password, // A API já faz a encriptação
+                Cargo = "Utilizador",
+                PermissaoId = permissaoId
             };
 
-            Console.WriteLine($"Enviando dados: Nome={newUser.Nome}, Email={newUser.Email}, Cargo={newUser.Cargo}, PermissaoId={newUser.PermissaoId}");
+            Console.WriteLine($"Criando utilizador: {newUser.Nome} ({newUser.Email})");
 
             // Enviar requisição para a API
-            var response = await Http.PostAsJsonAsync("http://localhost:5189/api/Utilizadore", newUser);
+            var response = await Http.PostAsJsonAsync($"{apiBaseUrl}/api/Utilizadore", newUser);
 
             if (response.IsSuccessStatusCode)
             {
-                successMessage = "Registo realizado com sucesso! Redirecionando para o login...";
+                successMessage = "Conta criada com sucesso! Redirecionando para o login...";
                 StateHasChanged();
 
                 // Limpar o formulário
@@ -153,22 +223,12 @@
             }
             else
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Erro da API ({response.StatusCode}): {errorContent}");
-                
-                errorMessage = response.StatusCode switch
-                {
-                    HttpStatusCode.BadRequest => $"Dados inválidos: {errorContent}",
-                    HttpStatusCode.Conflict => "Este email já está registrado no sistema.",
-                    HttpStatusCode.InternalServerError => $"Erro interno do servidor. Detalhes: {errorContent}",
-                    _ => $"Erro ao registrar utilizador: {response.StatusCode} - {errorContent}"
-                };
+                await HandleApiError(response);
             }
         }
-        catch (HttpRequestException httpEx)
+        catch (HttpRequestException)
         {
-            errorMessage = "Erro de conexão com o servidor. Verifique se a API está rodando.";
-            Console.WriteLine($"Erro HTTP: {httpEx.Message}");
+            errorMessage = "Erro de conexão com o servidor. Verifique sua conexão com a internet.";
         }
         catch (TaskCanceledException)
         {
@@ -176,13 +236,110 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Ocorreu um erro inesperado: {ex.Message}";
+            errorMessage = "Ocorreu um erro inesperado. Tente novamente.";
             Console.WriteLine($"Erro inesperado: {ex.Message}");
         }
         finally
         {
             isSubmitting = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task<bool> EmailAlreadyExists(string email)
+    {
+        try
+        {
+            var response = await Http.GetAsync($"{apiBaseUrl}/api/Utilizadore");
+            if (response.IsSuccessStatusCode)
+            {
+                var users = await response.Content.ReadFromJsonAsync<List<UtilizadoreDto>>();
+                return users?.Any(u => u.Email?.ToLowerInvariant() == email.ToLowerInvariant()) ?? false;
+            }
+        }
+        catch
+        {
+            // Se não conseguir verificar, assume que não existe
+        }
+        return false;
+    }
+
+    private async Task<Guid?> GetDefaultPermission()
+    {
+        try
+        {
+            // Tentar diferentes endpoints possíveis para permissões
+            var endpoints = new[] { "Permisso", "Permissao", "Permissoes" };
+            
+            foreach (var endpoint in endpoints)
+            {
+                try
+                {
+                    var response = await Http.GetAsync($"{apiBaseUrl}/api/{endpoint}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var permissoes = await response.Content.ReadFromJsonAsync<List<PermissoDto>>();
+                        if (permissoes != null && permissoes.Any())
+                        {
+                            // Procurar por uma permissão de "Utilizador" ou usar a primeira
+                            var userPermission = permissoes.FirstOrDefault(p => 
+                                p.Nome?.ToLowerInvariant().Contains("utilizador") == true ||
+                                p.Nome?.ToLowerInvariant().Contains("user") == true) 
+                                ?? permissoes.First();
+                            
+                            return userPermission.Id;
+                        }
+                    }
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao buscar permissões: {ex.Message}");
+        }
+        
+        return null; // Se não encontrar, a API deve lidar com isso
+    }
+
+    private async Task HandleApiError(HttpResponseMessage response)
+    {
+        var errorContent = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"Erro da API ({response.StatusCode}): {errorContent}");
+        
+        errorMessage = response.StatusCode switch
+        {
+            HttpStatusCode.BadRequest => "Dados inválidos. Verifique as informações inseridas.",
+            HttpStatusCode.Conflict => "Este email já está registrado no sistema.",
+            HttpStatusCode.UnprocessableEntity => "Dados inválidos. Verifique se todos os campos estão preenchidos corretamente.",
+            HttpStatusCode.InternalServerError => "Erro interno do servidor. Tente novamente mais tarde.",
+            HttpStatusCode.ServiceUnavailable => "Serviço temporariamente indisponível. Tente novamente mais tarde.",
+            _ => "Erro ao criar conta. Tente novamente."
+        };
+
+        // Se o erro contém informações sobre chave estrangeira
+        if (errorContent.Contains("foreign key") || errorContent.Contains("chave estrangeira"))
+        {
+            errorMessage = "Erro de configuração do sistema. Contacte o administrador.";
+        }
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -204,5 +361,12 @@
         [Required(ErrorMessage = "Confirmação de senha é obrigatória")]
         [Compare("Password", ErrorMessage = "As senhas não coincidem")]
         public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    public class PermissoDto
+    {
+        public Guid Id { get; set; }
+        public string Nome { get; set; } = string.Empty;
+        public string Descricao { get; set; } = string.Empty;
     }
 }

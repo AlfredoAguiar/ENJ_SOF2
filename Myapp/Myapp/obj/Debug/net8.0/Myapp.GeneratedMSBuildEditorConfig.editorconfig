@@ -22,12 +22,20 @@ build_property._RazorSourceGeneratorDebug =
 build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/diagu/RiderProjects/ENJ_SOF2tst/Myapp/Myapp/Pages/AdmMain.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQWRtTWFpbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/diagu/RiderProjects/ENJ_SOF2tst/Myapp/Myapp/Pages/Carteira.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2FydGVpcmEucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/diagu/RiderProjects/ENJ_SOF2tst/Myapp/Myapp/Pages/ChangePassword.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2hhbmdlUGFzc3dvcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/diagu/RiderProjects/ENJ_SOF2tst/Myapp/Myapp/Pages/EditarDadosPessoais.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRWRpdGFyRGFkb3NQZXNzb2Fpcy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/diagu/RiderProjects/ENJ_SOF2tst/Myapp/Myapp/Pages/Index.razor]

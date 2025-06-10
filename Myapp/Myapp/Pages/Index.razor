@@ -6,51 +6,71 @@
 @inject HttpClient Http
 @inject UserStateService UserStateService
 
-<div class="app-container">
-    <!-- Sidebar Navigation -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2>Gestão Ativos</h2>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="/main" class="nav-item active">
-                <div class="nav-icon dashboard-nav-icon"></div>
-                <span>Dashboard</span>
-            </a>
-            <a href="/portfolio" class="nav-item">
-                <div class="nav-icon portfolio-nav-icon"></div>
-                <span>Carteira</span>
-            </a>
-            <a href="/transactions" class="nav-item">
-                <div class="nav-icon transactions-nav-icon"></div>
-                <span>Transações</span>
-            </a>
-            <a href="/reports" class="nav-item">
-                <div class="nav-icon reports-nav-icon"></div>
-                <span>Relatórios</span>
-            </a>
-        </nav>
-        <div class="sidebar-footer">
-            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
-                <div class="nav-icon logout-nav-icon"></div>
-                <span>Sair</span>
-            </a>
+@if (isLoading)
+{
+    <div class="loading-container">
+        <div class="loading-spinner">
+            <p>Carregando...</p>
         </div>
     </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        @if (isLoading)
-        {
-            <div class="loading-container">
-                <div class="loading-spinner">
-                    <p>Carregando dados...</p>
-                </div>
+}
+else if (isAuthenticated)
+{
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Gestão Ativos</h2>
             </div>
-        }
-        else
-        {
-            <!-- Top Header -->
+            <nav class="sidebar-nav">
+                @if (userRole == "Utilizador")
+                {
+                    <!-- Regular Users: Dashboard, Portfolio, Transactions -->
+                    <a href="/main" class="nav-item @(NavigationManager.Uri.EndsWith("/main") ? "active" : "")">
+                        <div class="nav-icon dashboard-nav-icon"></div>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/portfolio" class="nav-item @(NavigationManager.Uri.EndsWith("/portfolio") ? "active" : "")">
+                        <div class="nav-icon portfolio-nav-icon"></div>
+                        <span>Carteira</span>
+                    </a>
+                    <a href="/transactions" class="nav-item @(NavigationManager.Uri.EndsWith("/transactions") ? "active" : "")">
+                        <div class="nav-icon transactions-nav-icon"></div>
+                        <span>Transações</span>
+                    </a>
+                }
+                else if (userRole == "GestorUtilizadores")
+                {
+                    <!-- Asset Managers: Dashboard, Portfolio, Transactions, Reports -->
+                    <a href="/main" class="nav-item @(NavigationManager.Uri.EndsWith("/main") ? "active" : "")">
+                        <div class="nav-icon dashboard-nav-icon"></div>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/portfolio" class="nav-item @(NavigationManager.Uri.EndsWith("/portfolio") ? "active" : "")">
+                        <div class="nav-icon portfolio-nav-icon"></div>
+                        <span>Carteira</span>
+                    </a>
+                    <a href="/transactions" class="nav-item @(NavigationManager.Uri.EndsWith("/transactions") ? "active" : "")">
+                        <div class="nav-icon transactions-nav-icon"></div>
+                        <span>Transações</span>
+                    </a>
+                    <a href="/reports" class="nav-item @(NavigationManager.Uri.EndsWith("/reports") ? "active" : "")">
+                        <div class="nav-icon reports-nav-icon"></div>
+                        <span>Relatórios</span>
+                    </a>
+                }
+            </nav>
+            <div class="sidebar-footer">
+                <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                    <div class="nav-icon logout-nav-icon"></div>
+                    <span>Sair</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Regular User and Asset Manager Dashboard -->
             <header class="dashboard-header">
                 <div class="dashboard-title">
                     <h1>Dashboard Financeiro</h1>
@@ -83,15 +103,15 @@
                 <div class="stat-card">
                     <div class="stat-icon performance-icon"></div>
                     <div class="stat-info">
-                        <span class="stat-value">@monthlyReturn.ToString("+0.0;-0.0")%</span>
-                        <span class="stat-label">Retorno Mensal</span>
+                        <span class="stat-value">@monthlyReturn.ToString("+0.00;-0.00")%</span>
+                        <span class="stat-label">Retorno Total</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon dividends-icon"></div>
                     <div class="stat-info">
                         <span class="stat-value">@monthlyEarnings.ToString("C2")</span>
-                        <span class="stat-label">Rendimentos do Mês</span>
+                        <span class="stat-label">Rendimentos Anuais</span>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -111,8 +131,10 @@
                         <a href="/portfolio" class="view-all">Ver detalhes</a>
                     </div>
                     <div class="table-container">
-                        <table class="data-table">
-                            <thead>
+                        @if (assetAllocation.Any())
+                        {
+                            <table class="data-table">
+                                <thead>
                                 <tr>
                                     <th>Classe</th>
                                     <th>Valor</th>
@@ -120,8 +142,8 @@
                                     <th>Retorno</th>
                                     <th>Status</th>
                                 </tr>
-                            </thead>
-                            <tbody>
+                                </thead>
+                                <tbody>
                                 @foreach (var asset in assetAllocation)
                                 {
                                     <tr>
@@ -132,8 +154,17 @@
                                         <td><span class="status-badge @asset.StatusClass">@asset.Status</span></td>
                                     </tr>
                                 }
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                                <h3>Sem dados de alocação</h3>
+                                <p>Não há informações de ativos disponíveis no momento</p>
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -141,21 +172,31 @@
                     <div class="dashboard-section half">
                         <div class="section-header">
                             <h2>Próximos Pagamentos</h2>
-                            <a href="/payments" class="view-all">Ver todos</a>
                         </div>
                         <div class="maintenance-list">
-                            @foreach (var payment in upcomingPayments)
+                            @if (upcomingPayments.Any())
                             {
-                                <div class="maintenance-item">
-                                    <div class="maintenance-date">
-                                        <span class="day">@payment.Date.Day</span>
-                                        <span class="month">@payment.Date.ToString("MMM")</span>
+                                @foreach (var payment in upcomingPayments)
+                                {
+                                    <div class="maintenance-item">
+                                        <div class="maintenance-date">
+                                            <span class="day">@payment.Date.Day</span>
+                                            <span class="month">@payment.Date.ToString("MMM")</span>
+                                        </div>
+                                        <div class="maintenance-details">
+                                            <h4>@payment.AssetName</h4>
+                                            <p>@payment.Value.ToString("C2") (@payment.Description)</p>
+                                            <span class="maintenance-technician">@payment.Type</span>
+                                        </div>
                                     </div>
-                                    <div class="maintenance-details">
-                                        <h4>@payment.AssetName</h4>
-                                        <p>@payment.Value.ToString("C2") (@payment.Description)</p>
-                                        <span class="maintenance-technician">@payment.Type</span>
-                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="empty-state">
+                                    <div style="font-size: 48px; margin-bottom: 16px;">💰</div>
+                                    <h3>Sem pagamentos agendados</h3>
+                                    <p>Não há pagamentos previstos no momento</p>
                                 </div>
                             }
                         </div>
@@ -167,21 +208,32 @@
                             <a href="/alerts" class="view-all">Ver todos</a>
                         </div>
                         <div class="alerts-list">
-                            @foreach (var alert in financialAlerts)
+                            @if (financialAlerts.Any())
                             {
-                                <div class="alert-item @alert.SeverityClass">
-                                    <div class="alert-icon"></div>
-                                    <div class="alert-details">
-                                        <h4>@alert.Title</h4>
-                                        <p>@alert.Description</p>
-                                        <span class="alert-date">@alert.Date.ToString("dd/MM/yyyy HH:mm")</span>
+                                @foreach (var alert in financialAlerts)
+                                {
+                                    <div class="alert-item @alert.SeverityClass">
+                                        <div class="alert-icon"></div>
+                                        <div class="alert-details">
+                                            <h4>@alert.Title</h4>
+                                            <p>@alert.Description</p>
+                                            <span class="alert-date">@alert.Date.ToString("dd/MM/yyyy HH:mm")</span>
+                                        </div>
                                     </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="empty-state">
+                                    <div style="font-size: 48px; margin-bottom: 16px;">🔔</div>
+                                    <h3>Sem alertas ativos</h3>
+                                    <p>Não há alertas no momento</p>
                                 </div>
                             }
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Recent Transactions -->
                 <div class="dashboard-section">
                     <div class="section-header">
@@ -189,8 +241,10 @@
                         <a href="/transactions" class="view-all">Ver todos</a>
                     </div>
                     <div class="table-container">
-                        <table class="data-table">
-                            <thead>
+                        @if (recentTransactions.Any())
+                        {
+                            <table class="data-table">
+                                <thead>
                                 <tr>
                                     <th>Data</th>
                                     <th>Ativo</th>
@@ -198,8 +252,8 @@
                                     <th>Descrição</th>
                                     <th>Valor</th>
                                 </tr>
-                            </thead>
-                            <tbody>
+                                </thead>
+                                <tbody>
                                 @foreach (var transaction in recentTransactions)
                                 {
                                     <tr>
@@ -210,69 +264,661 @@
                                         <td>@transaction.Value.ToString("C2")</td>
                                     </tr>
                                 }
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                                <h3>Sem movimentos recentes</h3>
+                                <p>Não há transações registradas recentemente</p>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
-        }
+        </div>
     </div>
-</div>
+}
+
+<style>
+    /* Global App Container */
+    .app-container {
+        display: flex;
+        min-height: 100vh;
+        background-color: #f8fafc;
+        color: #334155;
+    }
+
+    /* Sidebar Styles */
+    .sidebar {
+        width: 250px;
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        color: white;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        height: 100vh;
+    }
+
+    .sidebar-header {
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .sidebar-header h2 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #e2e8f0;
+    }
+
+    .sidebar-nav {
+        flex-grow: 1;
+    }
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        color: #cbd5e1;
+        text-decoration: none;
+        transition: background-color 0.2s, color 0.2s;
+    }
+
+    .nav-item:hover {
+        background-color: #334155;
+        color: white;
+    }
+
+    .nav-item.active {
+        background-color: #3b82f6;
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 12px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        filter: invert(1);
+    }
+
+    .dashboard-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>'); }
+    .portfolio-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v-4h-2Z"></path></svg>'); }
+    .transactions-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'); }
+    .reports-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>'); }
+    .logout-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>'); }
+
+    .sidebar-footer {
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid #334155;
+    }
+
+    /* Main Content Area */
+    .main-content {
+        flex-grow: 1;
+        padding: 20px 20px 20px 0;
+        overflow-y: auto;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f8fafc;
+        color: #334155;
+        line-height: 1.5;
+    }
+
+    .container {
+        padding: 0;
+        width: 100%;
+    }
+
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    .loading-spinner::after {
+        content: "";
+        display: block;
+        width: 40px;
+        height: 40px;
+        margin: 20px auto;
+        border-radius: 50%;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        animation: spin 1s linear infinite;
+    }
+
+    .loading-spinner p {
+        margin: 0;
+        color: #333;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .access-denied-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .access-denied-message {
+        text-align: center;
+        padding: 3rem;
+        background-color: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        max-width: 500px;
+    }
+
+    .access-denied-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .access-denied-message h2 {
+        color: #e53e3e;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .redirect-button {
+        margin-top: 1.5rem;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .redirect-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding-left: 20px;
+    }
+
+    .dashboard-title h1 {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .dashboard-title p {
+        color: #64748b;
+        font-size: 16px;
+    }
+
+    .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+    }
+
+    .user-info {
+        text-align: right;
+        margin-right: 12px;
+    }
+
+    .user-greeting {
+        font-size: 16px;
+        color: #64748b;
+    }
+
+    .avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 18px;
+        cursor: pointer;
+    }
+
+    .user-menu {
+        position: absolute;
+        right: 0;
+        top: 60px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 200px;
+        z-index: 100;
+        overflow: hidden;
+    }
+
+    .user-menu-item {
+        display: block;
+        padding: 12px 16px;
+        color: #334155;
+        text-decoration: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .user-menu-item:hover {
+        background-color: #f8fafc;
+    }
+
+    .user-menu-item.logout {
+        color: #e53e3e;
+    }
+
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 28px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+    }
+
+    .stat-icon {
+        width: 24px;
+        height: 24px;
+        font-size: 20px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        margin-bottom: 16px;
+    }
+
+    .portfolio-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v-4h-2Z"></path></svg>'); }
+    .performance-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8.3L12 15l-3.3-3.3L3 17"></path></svg>'); }
+    .dividends-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h6"></path><path d="M12 16v2"></path><path d="M12 6v2"></path></svg>'); }
+    .alerts-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'); }
+
+    .stat-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 6px;
+    }
+
+    .stat-label {
+        font-size: 16px;
+        color: #64748b;
+    }
+
+    .dashboard-content {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .dashboard-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 28px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .section-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .view-all {
+        font-size: 14px;
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .view-all:hover {
+        text-decoration: underline;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th {
+        text-align: left;
+        padding: 16px 28px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 600;
+        font-size: 14px;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    .data-table td {
+        padding: 16px 28px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 15px;
+        vertical-align: middle;
+    }
+
+    .data-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .data-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .positive-return {
+        color: #16a34a;
+        font-weight: 500;
+    }
+
+    .negative-return {
+        color: #dc2626;
+        font-weight: 500;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .balanced {
+        background-color: #e0f7fa;
+        color: #00796b;
+    }
+
+    .underallocated {
+        background-color: #fff3e0;
+        color: #e65100;
+    }
+
+    .overallocated {
+        background-color: #ffebee;
+        color: #d32f2f;
+    }
+
+    .dashboard-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .maintenance-list, .alerts-list {
+        padding: 20px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .maintenance-item, .alert-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .maintenance-item:last-child, .alert-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .maintenance-date {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 50px;
+        height: 50px;
+        border-radius: 8px;
+        background-color: #e0f7fa;
+        color: #00796b;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .maintenance-date .day {
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    .maintenance-date .month {
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+
+    .maintenance-details h4 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .maintenance-details p {
+        font-size: 14px;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .maintenance-technician {
+        font-size: 12px;
+        color: #94a3b8;
+    }
+
+    .alert-icon {
+        width: 24px;
+        height: 24px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        flex-shrink: 0;
+        margin-top: 4px;
+    }
+
+    .alert-item.warning .alert-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'); }
+    .alert-item.error .alert-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'); }
+    .alert-item.info .alert-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'); }
+
+    .alert-details h4 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .alert-details p {
+        font-size: 14px;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .alert-date {
+        font-size: 12px;
+        color: #94a3b8;
+    }
+
+    .alert-item.warning {
+        border-left: 4px solid #f59e0b;
+        padding-left: 12px;
+    }
+
+    .alert-item.error {
+        border-left: 4px solid #ef4444;
+        padding-left: 12px;
+    }
+
+    .transaction-type {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .income {
+        background-color: #dcfce7;
+        color: #16a34a;
+    }
+
+    .expense {
+        background-color: #fee2e2;
+        color: #dc2626;
+    }
+
+    .transfer {
+        background-color: #e0f2f7;
+        color: #0284c7;
+    }
+
+    /* Empty State Styles */
+    .empty-state {
+        text-align: center;
+        padding: 60px 28px;
+        color: #64748b;
+    }
+
+    .empty-state h3 {
+        margin-bottom: 12px;
+        color: #475569;
+        font-size: 18px;
+    }
+
+    .empty-state p {
+        font-size: 16px;
+    }
+    
+</style>
 
 @code {
-
     private bool isLoading = true;
+    private bool isAuthenticated = false;
     private string userName = "Utilizador";
+    private string userRole = "Utilizador";
     private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
     private bool showUserMenu = false;
 
-    // Dashboard Statistics
     private decimal totalPortfolioValue = 0;
     private decimal monthlyReturn = 0;
     private decimal monthlyEarnings = 0;
     private int activeAlerts = 0;
 
-    // Data Collections
     private List<AssetAllocationModel> assetAllocation = new List<AssetAllocationModel>();
     private List<PaymentModel> upcomingPayments = new List<PaymentModel>();
     private List<AlertModel> financialAlerts = new List<AlertModel>();
     private List<TransactionModel> recentTransactions = new List<TransactionModel>();
-   protected override async Task OnInitializedAsync()
-    {
-        await LoadDashboardData();
-    }
 
-    private async Task LoadDashboardData()
+    protected override async Task OnInitializedAsync()
     {
         try
         {
-            isLoading = true;
-            StateHasChanged();
+            Console.WriteLine("🔄 Iniciando carregamento da página main...");
 
-            // Carregar dados do usuário
-            await LoadUserData();
+            if (userRole == "Administrador")
+            {
+                Console.WriteLine("🔄 Administrador detectado, redirecionando para relatórios...");
+                NavigationManager.NavigateTo("/reports", forceLoad: true);
+                return;
+            }
 
-            // Carregar dados da carteira
-            await LoadPortfolioData();
+            if (!ValidateAuthentication())
+            {
+                Console.WriteLine("❌ Falha na validação de autenticação");
+                isLoading = false;
+                return;
+            }
 
-            // Carregar alocação de ativos
-            await LoadAssetAllocation();
+            Console.WriteLine("✅ Usuário autenticado, carregando dados...");
 
-            // Carregar próximos pagamentos
-            await LoadUpcomingPayments();
+            var userDataLoaded = await LoadUserDataSafely();
 
-            // Carregar alertas
-            LoadFinancialAlerts();
+            if (!userDataLoaded)
+            {
+                Console.WriteLine("❌ Falha ao carregar dados do usuário, redirecionando para login");
+                RedirectToLogin();
+                return;
+            }
 
-            // Carregar transações recentes
-            await LoadRecentTransactions();
+            Console.WriteLine($"✅ Dados do usuário carregados: {userName}, Cargo: {userRole}");
 
-            // Calcular estatísticas
-            CalculateDashboardStats();
+            Console.WriteLine("🔄 Carregando dados do dashboard para usuário não-admin...");
+            await LoadDashboardData();
+            Console.WriteLine("✅ Dashboard carregado com sucesso");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao carregar dados do dashboard: {ex.Message}");
+            Console.WriteLine($"❌ Erro durante inicialização: {ex.Message}");
+            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
         }
         finally
         {
@@ -281,32 +927,109 @@
         }
     }
 
-    private async Task LoadUserData()
+    private bool ValidateAuthentication()
     {
         try
         {
-            if (UserStateService.UserId != Guid.Empty)
+            if (UserStateService == null)
             {
-                var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
-                if (response.IsSuccessStatusCode)
-                {
-                    var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
-                    if (user != null)
-                    {
-                        userName = user.Nome ?? "Utilizador";
-                    }
-                }
+                Console.WriteLine("❌ UserStateService é null");
+                return false;
             }
-            else if (UserStateService.UserId == Guid.Empty)
+
+            if (UserStateService.UserId == Guid.Empty)
             {
-                NavigationManager.NavigateTo("/");
-                return;
-                
+                Console.WriteLine("❌ UserId está vazio");
+                return false;
             }
+
+            Console.WriteLine($"✅ Usuário autenticado com ID: {UserStateService.UserId}");
+            isAuthenticated = true;
+            return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao carregar dados do usuário: {ex.Message}");
+            Console.WriteLine($"❌ Erro na validação de autenticação: {ex.Message}");
+            return false;
+        }
+    }
+
+    private void RedirectToLogin()
+    {
+        try
+        {
+            Console.WriteLine("🔄 Redirecionando para login...");
+            isAuthenticated = false;
+            NavigationManager.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao redirecionar para login: {ex.Message}");
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private async Task<bool> LoadUserDataSafely()
+    {
+        try
+        {
+            Console.WriteLine($"🔄 Fazendo requisição para API: /api/Utilizadore/{UserStateService.UserId}");
+
+            var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+
+            Console.WriteLine($"📡 Resposta da API: {response.StatusCode}");
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Console.WriteLine("❌ API retornou 401 - Token inválido ou expirado");
+                return false;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ API retornou erro: {response.StatusCode} - {response.ReasonPhrase}");
+                return false;
+            }
+
+            var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+            if (user != null)
+            {
+                userName = user.Nome ?? "Utilizador";
+                userRole = user.Cargo ?? "Utilizador";
+                Console.WriteLine($"✅ Dados do usuário carregados: Nome={userName}, Cargo={userRole}");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine("❌ Resposta da API não contém dados do usuário");
+                return false;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"❌ Erro de rede ao carregar dados do usuário: {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro inesperado ao carregar dados do usuário: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            await LoadPortfolioData();
+            await LoadAssetAllocation();
+            await LoadDashboardContent();
+            await LoadRecentTransactions();
+            CalculateDashboardStats();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar dados do dashboard: {ex.Message}");
         }
     }
 
@@ -315,12 +1038,12 @@
         try
         {
             var response = await Http.GetAsync("http://localhost:5189/api/Carteira");
+
             if (response.IsSuccessStatusCode)
             {
                 var carteiras = await response.Content.ReadFromJsonAsync<List<CarteiraDto>>();
                 if (carteiras != null)
                 {
-                    // Filtrar carteiras do usuário atual
                     var userCarteiras = carteiras.Where(c => c.UtilizadorId == UserStateService.UserId).ToList();
                     totalPortfolioValue = userCarteiras.Sum(c => (decimal)c.Montante);
                 }
@@ -328,275 +1051,125 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao carregar dados da carteira: {ex.Message}");
+            Console.WriteLine($"❌ Erro ao carregar dados da carteira: {ex.Message}");
         }
     }
 
-    private async Task LoadAssetAllocation()
-    {
-        try
-        {
-            assetAllocation.Clear();
 
-            // Carregar Depósitos
-            await LoadDeposits();
-
-            // Carregar Fundos de Investimento
-            await LoadInvestmentFunds();
-
-            // Carregar Imóveis
-            await LoadRealEstate();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar alocação de ativos: {ex.Message}");
-        }
-    }
-
-    private async Task LoadDeposits()
-    {
-        try
-        {
-            var response = await Http.GetAsync("http://localhost:5189/api/Deposito");
-            if (response.IsSuccessStatusCode)
-            {
-                var depositos = await response.Content.ReadFromJsonAsync<List<DepositoDto>>();
-                if (depositos != null && depositos.Any())
-                {
-                    var totalDeposits = depositos.Sum(d => (decimal)d.Montante);
-                    var avgReturn = depositos.Average(d => (decimal)d.TaxaJuros);
-                    var allocation = totalPortfolioValue > 0 ? (totalDeposits / totalPortfolioValue) * 100 : 0;
-
-                    assetAllocation.Add(new AssetAllocationModel
-                    {
-                        Class = "Depósitos a Prazo",
-                        Value = totalDeposits,
-                        Allocation = allocation,
-                        Return = avgReturn,
-                        Status = GetAllocationStatus(allocation, 30), // Target de 30%
-                        StatusClass = GetAllocationStatusClass(allocation, 30)
-                    });
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar depósitos: {ex.Message}");
-        }
-    }
-
-    private async Task LoadInvestmentFunds()
-    {
-        try
-        {
-            var response = await Http.GetAsync("http://localhost:5189/api/FundosInvestimentos");
-            if (response.IsSuccessStatusCode)
-            {
-                var fundos = await response.Content.ReadFromJsonAsync<List<FundosInvestimentoDto>>();
-                if (fundos != null && fundos.Any())
-                {
-                    var totalFunds = fundos.Sum(f => (decimal)f.MontanteInvestido);
-                    var avgReturn = fundos.Average(f => (decimal)f.TaxaJurosPadrao);
-                    var allocation = totalPortfolioValue > 0 ? (totalFunds / totalPortfolioValue) * 100 : 0;
-
-                    assetAllocation.Add(new AssetAllocationModel
-                    {
-                        Class = "Fundos de Investimento",
-                        Value = totalFunds,
-                        Allocation = allocation,
-                        Return = avgReturn,
-                        Status = GetAllocationStatus(allocation, 45), // Target de 45%
-                        StatusClass = GetAllocationStatusClass(allocation, 45)
-                    });
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar fundos de investimento: {ex.Message}");
-        }
-    }
-
-    private async Task LoadRealEstate()
-    {
-        try
-        {
-            var response = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
-            if (response.IsSuccessStatusCode)
-            {
-                var imoveis = await response.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>();
-                if (imoveis != null && imoveis.Any())
-                {
-                    var totalRealEstate = imoveis.Sum(i => (decimal)i.ValorPropriedade);
-                    var avgReturn = imoveis.Any() ? imoveis.Average(i => 
-                        i.ValorPropriedade > 0 ? ((decimal)i.ValorRenda * 12 / (decimal)i.ValorPropriedade) * 100 : 0) : 0;
-                    var allocation = totalPortfolioValue > 0 ? (totalRealEstate / totalPortfolioValue) * 100 : 0;
-
-                    assetAllocation.Add(new AssetAllocationModel
-                    {
-                        Class = "Imóveis Arrendados",
-                        Value = totalRealEstate,
-                        Allocation = allocation,
-                        Return = avgReturn,
-                        Status = GetAllocationStatus(allocation, 25), // Target de 25%
-                        StatusClass = GetAllocationStatusClass(allocation, 25)
-                    });
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar imóveis: {ex.Message}");
-        }
-    }
-
-    private async Task LoadUpcomingPayments()
-    {
-        try
-        {
-            upcomingPayments.Clear();
-
-            // Simular próximos pagamentos baseados nos dados reais
-            // Em uma implementação real, você teria uma tabela de pagamentos/transações agendadas
-            
-            var depositsResponse = await Http.GetAsync("http://localhost:5189/api/Deposito");
-            if (depositsResponse.IsSuccessStatusCode)
-            {
-                var depositos = await depositsResponse.Content.ReadFromJsonAsync<List<DepositoDto>>();
-                if (depositos != null)
-                {
-                    foreach (var deposito in depositos.Take(2))
-                    {
-                        var monthlyInterest = (decimal)deposito.Montante * (decimal)deposito.TaxaJuros / 100 / 12;
-                        upcomingPayments.Add(new PaymentModel
-                        {
-                            AssetName = $"Depósito {deposito.Banco}",
-                            Date = DateTime.Now.AddDays(Random.Shared.Next(1, 30)),
-                            Value = monthlyInterest,
-                            Description = "Juros Mensais",
-                            Type = "Depósito"
-                        });
-                    }
-                }
-            }
-
-            var imoveisResponse = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
-            if (imoveisResponse.IsSuccessStatusCode)
-            {
-                var imoveis = await imoveisResponse.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>();
-                if (imoveis != null)
-                {
-                    foreach (var imovel in imoveis.Take(2))
-                    {
-                        upcomingPayments.Add(new PaymentModel
-                        {
-                            AssetName = imovel.Designacao ?? "Imóvel",
-                            Date = DateTime.Now.AddDays(Random.Shared.Next(1, 30)),
-                            Value = (decimal)imovel.ValorRenda,
-                            Description = "Renda Mensal",
-                            Type = "Imóvel"
-                        });
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar próximos pagamentos: {ex.Message}");
-        }
-    }
-
-    private void LoadFinancialAlerts()
-    {
-        // Gerar alertas baseados nos dados carregados
-        financialAlerts.Clear();
-
-        // Alertas de exemplo baseados na alocação
-        var depositAllocation = assetAllocation.FirstOrDefault(a => a.Class == "Depósitos a Prazo");
-        if (depositAllocation != null && depositAllocation.Allocation > 35)
-        {
-            financialAlerts.Add(new AlertModel
-            {
-                Title = "Sobrealocação em Depósitos",
-                Description = $"Você tem {depositAllocation.Allocation:0.1}% em depósitos. Considere diversificar.",
-                Date = DateTime.Now.AddHours(-2),
-                SeverityClass = "warning"
-            });
-        }
-
-        financialAlerts.Add(new AlertModel
-        {
-            Title = "Taxa Euribor Alterada",
-            Description = "A taxa Euribor a 12 meses aumentou para 4.2% - considere renegociar os seus depósitos",
-            Date = DateTime.Now.AddHours(-12),
-            SeverityClass = "info"
-        });
-
-        activeAlerts = financialAlerts.Count;
-    }
 
     private async Task LoadRecentTransactions()
     {
         try
         {
-            recentTransactions.Clear();
+            var response = await Http.GetAsync($"http://localhost:5189/api/Movimentos/utilizador/{UserStateService.UserId}");
 
-            // Simular transações recentes baseadas nos ativos
-            // Em uma implementação real, você teria uma tabela de transações
-
-            var carteirasResponse = await Http.GetAsync("http://localhost:5189/api/Carteira");
-            if (carteirasResponse.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
             {
-                var carteiras = await carteirasResponse.Content.ReadFromJsonAsync<List<CarteiraDto>>();
-                if (carteiras != null)
+                var movimentos = await response.Content.ReadFromJsonAsync<List<MovimentoDto>>();
+                if (movimentos != null && movimentos.Any())
                 {
-                    var userCarteiras = carteiras.Where(c => c.UtilizadorId == UserStateService.UserId).Take(5);
-                    
-                    foreach (var carteira in userCarteiras)
-                    {
-                        recentTransactions.Add(new TransactionModel
+                    recentTransactions = movimentos
+                        .OrderByDescending(m => m.DataMovimento)
+                        .Take(5)
+                        .Select(m => new TransactionModel
                         {
-                            Date = carteira.DataInicio,
-                            Asset = "Ativo Financeiro",
-                            Type = "Investimento",
-                            TypeClass = "buy",
-                            Description = "Investimento inicial",
-                            Value = (decimal)carteira.Montante
-                        });
-                    }
+                            Date = m.DataMovimento,
+                            Asset = m.TipoAtivo ?? "N/A",
+                            Type = GetTransactionType(m.TipoMovimento),
+                            TypeClass = GetTransactionTypeClass(m.TipoMovimento),
+                            Description = m.Descricao ?? "Movimento",
+                            Value = (decimal)m.Valor
+                        })
+                        .ToList();
+
+                    Console.WriteLine($"✅ Carregadas {recentTransactions.Count} transações recentes");
                 }
+                else
+                {
+                    Console.WriteLine("ℹ️ API de Movimentos acessada com sucesso, mas não retornou dados");
+                    recentTransactions = new List<TransactionModel>();
+                }
+            }
+            else
+            {
+                Console.WriteLine($"⚠️ API de Movimentos retornou status: {response.StatusCode}");
+                recentTransactions = new List<TransactionModel>();
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao carregar transações recentes: {ex.Message}");
+            Console.WriteLine($"❌ Erro ao carregar movimentos: {ex.Message}");
+            recentTransactions = new List<TransactionModel>();
         }
+    }
+
+    private async Task LoadDashboardContent()
+    {
+        // Mantendo os dados hardcoded para Próximos Pagamentos e Alertas conforme solicitado
+        upcomingPayments = new List<PaymentModel>
+        {
+            new PaymentModel { AssetName = "Depósito Millennium", Date = DateTime.Now.AddDays(5), Value = 19.50m, Description = "Juros Mensais", Type = "Depósito" },
+            new PaymentModel { AssetName = "Apartamento T2", Date = DateTime.Now.AddDays(10), Value = 500m, Description = "Renda Mensal", Type = "Imóvel" }
+        };
+
+        financialAlerts = new List<AlertModel>
+        {
+            new AlertModel { Title = "Taxa Euribor Alterada", Description = "A taxa aumentou para 4.2%", Date = DateTime.Now.AddHours(-2), SeverityClass = "warning" },
+            new AlertModel { Title = "Pagamento em Atraso", Description = "Renda em atraso há 3 dias", Date = DateTime.Now.AddHours(-6), SeverityClass = "error" }
+        };
     }
 
     private void CalculateDashboardStats()
     {
-        // Calcular retorno mensal médio
-        if (assetAllocation.Any())
+        if (assetAllocation.Any() && totalPortfolioValue > 0)
         {
-            monthlyReturn = assetAllocation.Average(a => a.Return);
+            var totalReturn = assetAllocation.Sum(asset => asset.Value * asset.Return / 100);
+            monthlyReturn = (totalReturn / totalPortfolioValue) * 100;
+            monthlyEarnings = totalReturn;
+        }
+        else
+        {
+            monthlyReturn = 0;
+            monthlyEarnings = 0;
         }
 
-        // Calcular rendimentos mensais estimados
-        monthlyEarnings = totalPortfolioValue * (monthlyReturn / 100) / 12;
+        activeAlerts = financialAlerts.Count;
     }
 
-    private string GetAllocationStatus(decimal current, decimal target)
+    private string GetAllocationStatus(decimal allocation)
     {
-        var difference = Math.Abs(current - target);
-        if (difference <= 2) return "Balanceado";
-        return current > target ? "Sobrealoc." : "Subaloc.";
+        if (allocation >= 25 && allocation <= 35) return "Balanceado";
+        if (allocation < 25) return "Subvalor";
+        return "Sobrevalo";
     }
 
-    private string GetAllocationStatusClass(decimal current, decimal target)
+    private string GetAllocationStatusClass(decimal allocation)
     {
-        var difference = Math.Abs(current - target);
-        if (difference <= 2) return "balanced";
-        return current > target ? "overallocated" : "underallocated";
+        if (allocation >= 25 && allocation <= 35) return "balanced";
+        if (allocation < 25) return "underallocated";
+        return "overallocated";
+    }
+
+    private string GetTransactionType(string? tipoMovimento)
+    {
+        return tipoMovimento switch
+        {
+            "Entrada" => "Rendimento",
+            "Saida" => "Despesa",
+            "Transferencia" => "Transferência",
+            _ => "Movimento"
+        };
+    }
+
+    private string GetTransactionTypeClass(string? tipoMovimento)
+    {
+        return tipoMovimento switch
+        {
+            "Entrada" => "income",
+            "Saida" => "expense",
+            "Transferencia" => "transfer",
+            _ => "transfer"
+        };
     }
 
     private void ToggleUserMenu()
@@ -606,11 +1179,253 @@
 
     private void Logout()
     {
-        UserStateService.UserId = Guid.Empty;
-        NavigationManager.NavigateTo("/");
+        try
+        {
+            UserStateService.UserId = Guid.Empty;
+            isAuthenticated = false;
+            NavigationManager.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro durante logout: {ex.Message}");
+            NavigationManager.NavigateTo("/");
+        }
     }
 
-    // Model Classes
+// Substitua os DTOs existentes pelos corretos que correspondem à API:
+
+// DTOs corrigidos para corresponder à API
+    public class DepositoDto
+    {
+        public string id { get; set; } = string.Empty;
+        public string tipo { get; set; } = string.Empty;
+        public DateTime dataInicio { get; set; }
+        public double taxaPercentagem { get; set; }
+        public Guid UtilizadorId { get; set; } // Este campo pode não vir da API, será usado internamente
+        public double Montante { get; set; } = 0; // Este campo pode não vir da API, será usado internamente
+    }
+
+    public class FundoInvestimentoDto
+    {
+        public string id { get; set; } = string.Empty;
+        public string tipo { get; set; } = string.Empty;
+        public DateTime dataInicio { get; set; }
+        public double taxaPercentagem { get; set; }
+        public Guid UtilizadorId { get; set; } // Este campo pode não vir da API, será usado internamente
+        public double ValorInvestido { get; set; } = 0; // Este campo pode não vir da API, será usado internamente
+        public string? NomeFundo { get; set; } // Este campo pode não vir da API, será usado internamente
+    }
+
+    public class ImovelArrendamentoDto
+    {
+        public string id { get; set; } = string.Empty;
+        public string tipo { get; set; } = string.Empty;
+        public DateTime dataInicio { get; set; }
+        public double taxaPercentagem { get; set; }
+        public Guid UtilizadorId { get; set; } // Este campo pode não vir da API, será usado internamente
+        public double ValorImovel { get; set; } = 0; // Este campo pode não vir da API, será usado internamente
+        public double RendaMensal { get; set; } = 0; // Este campo pode não vir da API, será usado internamente
+        public string? Morada { get; set; } // Este campo pode não vir da API, será usado internamente
+    }
+
+// Adicione esta classe MovimentoDto que estava faltando:
+    public class MovimentoDto
+    {
+        public string id { get; set; } = string.Empty;
+        public Guid UtilizadorId { get; set; }
+        public string? TipoMovimento { get; set; }
+        public string? TipoAtivo { get; set; }
+        public double Valor { get; set; }
+        public DateTime DataMovimento { get; set; }
+        public string? Descricao { get; set; }
+    }
+
+// Atualize também o método LoadAssetAllocation para trabalhar com os dados corretos:
+    private async Task LoadAssetAllocation()
+    {
+        try
+        {
+            assetAllocation = new List<AssetAllocationModel>();
+
+            // Primeiro, buscar os ativos financeiros do usuário
+            var ativosFinanceirosResponse = await Http.GetAsync($"http://localhost:5189/api/AtivosFinanceiros/utilizador/{UserStateService.UserId}");
+
+            if (ativosFinanceirosResponse.IsSuccessStatusCode)
+            {
+                var ativosFinanceiros = await ativosFinanceirosResponse.Content.ReadFromJsonAsync<List<AtivoFinanceiroDto>>();
+
+                if (ativosFinanceiros != null && ativosFinanceiros.Any())
+                {
+                    Console.WriteLine($"✅ Usuário possui {ativosFinanceiros.Count} ativos financeiros");
+
+                    // Agrupar por tipo de ativo
+                    var depositosIds = ativosFinanceiros.Where(af => af.TipoAtivo == "DepositoAPrazo").Select(af => af.AtivoId).ToList();
+                    var fundosIds = ativosFinanceiros.Where(af => af.TipoAtivo == "FundoInvestimento").Select(af => af.AtivoId).ToList();
+                    var imoveisIds = ativosFinanceiros.Where(af => af.TipoAtivo == "ImovelArrendamento").Select(af => af.AtivoId).ToList();
+
+                    // Buscar detalhes dos depósitos
+                    if (depositosIds.Any())
+                    {
+                        await LoadDepositosDetails(depositosIds);
+                    }
+
+                    // Buscar detalhes dos fundos
+                    if (fundosIds.Any())
+                    {
+                        await LoadFundosDetails(fundosIds);
+                    }
+
+                    // Buscar detalhes dos imóveis
+                    if (imoveisIds.Any())
+                    {
+                        await LoadImoveisDetails(imoveisIds);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("ℹ️ Usuário não possui ativos financeiros associados");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"⚠️ API de AtivosFinanceiros retornou status: {ativosFinanceirosResponse.StatusCode}");
+            }
+
+            if (!assetAllocation.Any())
+            {
+                Console.WriteLine("⚠️ Nenhum ativo encontrado para este usuário");
+            }
+            else
+            {
+                Console.WriteLine($"✅ Carregados {assetAllocation.Count} tipos de ativos para o usuário");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar alocação de ativos: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDepositosDetails(List<string> depositosIds)
+    {
+        try
+        {
+            var depositosResponse = await Http.GetAsync("http://localhost:5189/api/Deposito");
+            if (depositosResponse.IsSuccessStatusCode)
+            {
+                var todosDepositos = await depositosResponse.Content.ReadFromJsonAsync<List<DepositoDto>>();
+                var userDepositos = todosDepositos?.Where(d => depositosIds.Contains(d.id)).ToList();
+
+                if (userDepositos != null && userDepositos.Any())
+                {
+                    var totalDepositos = userDepositos.Count * 5000m; // Valor estimado por depósito
+                    var avgTaxa = userDepositos.Average(d => (decimal)d.taxaPercentagem);
+                    var allocation = totalPortfolioValue > 0 ? (totalDepositos / Math.Max(totalPortfolioValue, totalDepositos)) * 100 : 45;
+
+                    assetAllocation.Add(new AssetAllocationModel
+                    {
+                        Class = "Depósitos",
+                        Value = totalDepositos,
+                        Allocation = allocation,
+                        Return = avgTaxa,
+                        Status = GetAllocationStatus(allocation),
+                        StatusClass = GetAllocationStatusClass(allocation)
+                    });
+
+                    Console.WriteLine($"✅ Adicionados {userDepositos.Count} depósitos do usuário com taxa média de {avgTaxa:F1}%");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar detalhes dos depósitos: {ex.Message}");
+        }
+    }
+
+    private async Task LoadFundosDetails(List<string> fundosIds)
+    {
+        try
+        {
+            var fundosResponse = await Http.GetAsync("http://localhost:5189/api/FundoInvestimento");
+            if (fundosResponse.IsSuccessStatusCode)
+            {
+                var todosFundos = await fundosResponse.Content.ReadFromJsonAsync<List<FundoInvestimentoDto>>();
+                var userFundos = todosFundos?.Where(f => fundosIds.Contains(f.id)).ToList();
+
+                if (userFundos != null && userFundos.Any())
+                {
+                    var totalFundos = userFundos.Count * 8000m; // Valor estimado por fundo
+                    var avgTaxa = userFundos.Average(f => (decimal)f.taxaPercentagem);
+                    var allocation = totalPortfolioValue > 0 ? (totalFundos / Math.Max(totalPortfolioValue, totalFundos)) * 100 : 35;
+
+                    assetAllocation.Add(new AssetAllocationModel
+                    {
+                        Class = "Fundos",
+                        Value = totalFundos,
+                        Allocation = allocation,
+                        Return = avgTaxa,
+                        Status = GetAllocationStatus(allocation),
+                        StatusClass = GetAllocationStatusClass(allocation)
+                    });
+
+                    Console.WriteLine($"✅ Adicionados {userFundos.Count} fundos do usuário com taxa média de {avgTaxa:F1}%");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar detalhes dos fundos: {ex.Message}");
+        }
+    }
+
+    private async Task LoadImoveisDetails(List<string> imoveisIds)
+    {
+        try
+        {
+            var imoveisResponse = await Http.GetAsync("http://localhost:5189/api/ImovelArrendamento");
+            if (imoveisResponse.IsSuccessStatusCode)
+            {
+                var todosImoveis = await imoveisResponse.Content.ReadFromJsonAsync<List<ImovelArrendamentoDto>>();
+                var userImoveis = todosImoveis?.Where(i => imoveisIds.Contains(i.id)).ToList();
+
+                if (userImoveis != null && userImoveis.Any())
+                {
+                    var totalImoveis = userImoveis.Count * 150000m; // Valor estimado por imóvel
+                    var avgTaxa = userImoveis.Average(i => (decimal)i.taxaPercentagem);
+                    var allocation = totalPortfolioValue > 0 ? (totalImoveis / Math.Max(totalPortfolioValue, totalImoveis)) * 100 : 20;
+
+                    assetAllocation.Add(new AssetAllocationModel
+                    {
+                        Class = "Imóveis",
+                        Value = totalImoveis,
+                        Allocation = allocation,
+                        Return = avgTaxa,
+                        Status = GetAllocationStatus(allocation),
+                        StatusClass = GetAllocationStatusClass(allocation)
+                    });
+
+                    Console.WriteLine($"✅ Adicionados {userImoveis.Count} imóveis do usuário com taxa média de {avgTaxa:F1}%");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar detalhes dos imóveis: {ex.Message}");
+        }
+    }
+    public class AtivoFinanceiroDto
+    {
+        public string id { get; set; } = string.Empty;
+        public Guid UtilizadorId { get; set; }
+        public string AtivoId { get; set; } = string.Empty;
+        public string TipoAtivo { get; set; } = string.Empty;
+        public DateTime DataAquisicao { get; set; }
+        public double ValorInvestido { get; set; }
+    }
+
+
+
+    // Modelos existentes
     public class AssetAllocationModel
     {
         public string Class { get; set; } = string.Empty;
@@ -648,17 +1463,3 @@
         public decimal Value { get; set; }
     }
 }
-
-<style>
-    .loading-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 50vh;
-    }
-
-    .loading-spinner {
-        text-align: center;
-        padding: 2rem;
-    }
-</style>

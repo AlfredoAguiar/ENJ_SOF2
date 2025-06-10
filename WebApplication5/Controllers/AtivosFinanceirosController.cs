@@ -62,7 +62,7 @@ namespace WebApplication1.Controllers
         {
             var ativo = new AtivosFinanceiro
             {
-                Id = Guid.NewGuid(),
+                Id = ativoDto.Id,
                 Tipo = ativoDto.Tipo,
                 DataInicio = ativoDto.DataInicio,
                 TaxaPercentagem = ativoDto.TaxaPercentagem

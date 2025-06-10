@@ -1,1150 +1,1944 @@
 ﻿@page "/portfolio"
 @attribute [Authorize]
 @inject NavigationManager NavigationManager
+@inject HttpClient Http
+@inject UserStateService UserStateService
 @using System.Globalization
+@using System.Net
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using WebApplication5.DTO
 
-<div class="app-container">
-    <!-- Sidebar Navigation -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2>Gestão Ativos</h2>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="/" class="nav-item">
-                <div class="nav-icon dashboard-nav-icon"></div>
-                <span>Dashboard</span>
-            </a>
-            <a href="/portfolio" class="nav-item active">
-                <div class="nav-icon portfolio-nav-icon"></div>
-                <span>Carteira</span>
-            </a>
-            <a href="/transactions" class="nav-item">
-                <div class="nav-icon transactions-nav-icon"></div>
-                <span>Transações</span>
-            </a>
-            <a href="/reports" class="nav-item">
-                <div class="nav-icon reports-nav-icon"></div>
-                <span>Relatórios</span>
-            </a>
-        </nav>
-        <div class="sidebar-footer">
-            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
-                <div class="nav-icon logout-icon"></div>
-                <span>Sair</span>
-            </a>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Header -->
-        <header class="dashboard-header">
-            <div class="dashboard-title">
-                <h1>Carteira</h1>
-                <p>Gestão dos seus ativos financeiros</p>
-            </div>
-            <div class="user-profile">
-                <span class="user-greeting">Olá, <strong>@userName</strong></span>
-                <button class="user-menu-button" @onclick="ToggleUserMenu">
-                    <div class="avatar">@userInitials</div>
-                    @if (showUserMenu)
-                    {
-                        <div class="user-menu">
-                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
-                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
-                        </div>
-                    }
-                </button>
-            </div>
-        </header>
-
-        <!-- Portfolio Content -->
-        <div class="portfolio-container">
-    <!-- Summary Cards -->
-    <div class="summary-cards">
-        <div class="summary-card">
-            <div class="card-icon blue-icon">€</div>
-            <div class="card-content">
-                <h3>@FormatCurrency(totalValue)</h3>
-                <p>Valor Total da Carteira</p>
-            </div>
-        </div>
-        <div class="summary-card">
-            <div class="card-icon green-icon">%</div>
-            <div class="card-content">
-                <h3>@FormatPercentage(monthlyReturn)</h3>
-                <p>Retorno Mensal</p>
-            </div>
-        </div>
-        <div class="summary-card">
-            <div class="card-icon yellow-icon">€</div>
-            <div class="card-content">
-                <h3>@FormatCurrency(monthlyIncome)</h3>
-                <p>Rendimento Mensal</p>
-            </div>
-        </div>
-        <div class="summary-card">
-            <div class="card-icon red-icon">#</div>
-            <div class="card-content">
-                <h3>@alerts</h3>
-                <p>Alertas Ativos</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Search and Add Controls -->
-    <div class="actions-bar">
-        <div class="search-container">
-            <input type="text" placeholder="Pesquisar ativos..." @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchAssets" />
-            <div class="filter-container">
-                <!-- Opção 1: Usando manipulação manual de eventos -->
-                <select value="@selectedType" @onchange="HandleTypeChange">
-                    <option value="">Todos os Tipos</option>
-                    <option value="Deposito">Depósitos a Prazo</option>
-                    <option value="Fundo">Fundos de Investimento</option>
-                    <option value="Imovel">Imóveis Arrendados</option>
-                </select>
-                @if (selectedType == "Deposito" || selectedType == "Fundo")
-                {
-                    <div class="range-filter">
-                        <span>Valor: </span>
-                        <!-- Opção 1: Usando manipulação manual de eventos -->
-                        <input type="range" min="0" max="200000" step="1000" value="@minValue" @onchange="HandleValueChange" />
-                        <span>@FormatCurrency(minValue)</span>
-                    </div>
-                }
-            </div>
-        </div>
-        <button class="add-button" @onclick="ShowAddModal">+ Adicionar Ativo</button>
-    </div>
-    <!-- Distribution Chart -->
-    <div class="allocation-section">
-        <div class="section-header">
-            <h2>Alocação de Ativos</h2>
-            <a href="javascript:void(0)" class="view-details">Ver detalhes</a>
-        </div>
-        <div class="allocation-content">
-            <div class="allocation-chart">
-                <!-- Chart would go here - using a placeholder -->
-                <div class="chart-placeholder">
-                    <div class="pie-segment deposits" style="--percentage: @depositPercentage"></div>
-                    <div class="pie-segment funds" style="--percentage: @fundsPercentage"></div>
-                    <div class="pie-segment properties" style="--percentage: @propertiesPercentage"></div>
-                    <div class="chart-center"></div>
-                </div>
-                <div class="chart-legend">
-                    <div class="legend-item">
-                        <span class="legend-color deposits"></span>
-                        <span>Depósitos a Prazo (@depositPercentage%)</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color funds"></span>
-                        <span>Fundos de Investimento (@fundsPercentage%)</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color properties"></span>
-                        <span>Imóveis Arrendados (@propertiesPercentage%)</span>
-                    </div>
-                </div>
-            </div>
-            <div class="allocation-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Classe</th>
-                            <th>Valor</th>
-                            <th>Alocação</th>
-                            <th>Alvo</th>
-                            <th>Retorno</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Depósitos a Prazo</td>
-                            <td>@FormatCurrency(depositValue)</td>
-                            <td>@depositPercentage%</td>
-                            <td>30.0%</td>
-                            <td class="return-value">+2.5%</td>
-                            <td><span class="status-tag sobrealoc">Sobrealoc.</span></td>
-                        </tr>
-                        <tr>
-                            <td>Fundos de Investimento</td>
-                            <td>@FormatCurrency(fundsValue)</td>
-                            <td>@fundsPercentage%</td>
-                            <td>45.0%</td>
-                            <td class="return-value">+7.8%</td>
-                            <td><span class="status-tag subaloc">Subaloc.</span></td>
-                        </tr>
-                        <tr>
-                            <td>Imóveis Arrendados</td>
-                            <td>@FormatCurrency(propertiesValue)</td>
-                            <td>@propertiesPercentage%</td>
-                            <td>25.0%</td>
-                            <td class="return-value">+4.9%</td>
-                            <td><span class="status-tag balanceado">Balanceado</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Assets List -->
-    <div class="assets-section">
-        <div class="section-header">
-            <h2>Meus Ativos</h2>
-            <div class="view-toggle">
-                <button class="@(viewMode == "list" ? "active" : "")" @onclick="@(() => viewMode = "list")">
-                    <i class="list-view-icon"></i>
-                </button>
-                <button class="@(viewMode == "grid" ? "active" : "")" @onclick="@(() => viewMode = "grid")">
-                    <i class="grid-view-icon"></i>
-                </button>
-            </div>
-        </div>
-
-        @if (viewMode == "list")
-        {
-            <div class="assets-list">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Tipo</th>
-                            <th>Valor</th>
-                            <th>Retorno</th>
-                            <th>Data de Vencimento</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var asset in filteredAssets)
-                        {
-                            <tr>
-                                <td>@asset.Name</td>
-                                <td>@GetAssetTypeName(asset.Type)</td>
-                                <td>@FormatCurrency(asset.Value)</td>
-                                <td class="return-value">+@asset.Return%</td>
-                                <td>@(asset.MaturityDate?.ToString("dd/MM/yyyy") ?? "N/A")</td>
-                                <td class="actions-cell">
-                                    <button class="action-button view" @onclick="() => ViewAssetDetails(asset.Id)">
-                                        <i class="view-icon"></i>
-                                    </button>
-                                    <button class="action-button edit" @onclick="() => EditAsset(asset.Id)">
-                                        <i class="edit-icon"></i>
-                                    </button>
-                                    <button class="action-button delete" @onclick="() => DeleteAsset(asset.Id)">
-                                        <i class="delete-icon"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-        else
-        {
-            <div class="assets-grid">
-                @foreach (var asset in filteredAssets)
-                {
-                    <div class="asset-card @asset.Type.ToLower()">
-                        <div class="asset-card-header">
-                            <h3>@asset.Name</h3>
-                            <span class="asset-type-tag">@GetAssetTypeName(asset.Type)</span>
-                        </div>
-                        <div class="asset-card-body">
-                            <div class="asset-detail">
-                                <span class="detail-label">Valor:</span>
-                                <span class="detail-value">@FormatCurrency(asset.Value)</span>
-                            </div>
-                            <div class="asset-detail">
-                                <span class="detail-label">Retorno:</span>
-                                <span class="detail-value return-value">+@asset.Return%</span>
-                            </div>
-                            @if (asset.Type == "Deposito")
-                            {
-                                <div class="asset-detail">
-                                    <span class="detail-label">Banco:</span>
-                                    <span class="detail-value">@asset.Bank</span>
-                                </div>
-                                <div class="asset-detail">
-                                    <span class="detail-label">Taxa Juro:</span>
-                                    <span class="detail-value">@asset.InterestRate%</span>
-                                </div>
-                            }
-                            else if (asset.Type == "Fundo")
-                            {
-                                <div class="asset-detail">
-                                    <span class="detail-label">Gestor:</span>
-                                    <span class="detail-value">@asset.Manager</span>
-                                </div>
-                                <div class="asset-detail">
-                                    <span class="detail-label">Risco:</span>
-                                    <span class="detail-value">@asset.RiskLevel</span>
-                                </div>
-                            }
-                            else if (asset.Type == "Imovel")
-                            {
-                                <div class="asset-detail">
-                                    <span class="detail-label">Localização:</span>
-                                    <span class="detail-value">@asset.Location</span>
-                                </div>
-                                <div class="asset-detail">
-                                    <span class="detail-label">Renda Mensal:</span>
-                                    <span class="detail-value">@FormatCurrency(asset.MonthlyRent)</span>
-                                </div>
-                            }
-                        </div>
-                        <div class="asset-card-footer">
-                            <button class="card-action-btn view" @onclick="() => ViewAssetDetails(asset.Id)">
-                                Detalhes
-                            </button>
-                            <button class="card-action-btn edit" @onclick="() => EditAsset(asset.Id)">
-                                Editar
-                            </button>
-                            <button class="card-action-btn delete" @onclick="() => DeleteAsset(asset.Id)">
-                                Excluir
-                            </button>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-</div>
-    </div>
-</div>
-
-<!-- Add Asset Modal -->
-@if (showAddModal)
+@if (isLoading)
 {
-    <div class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>@(editingAssetId == 0 ? "Adicionar Novo Ativo" : "Editar Ativo")</h2>
-                <button class="close-button" @onclick="CloseModal">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-tabs">
-                    <button class="tab-button @(selectedAssetType == "Deposito" ? "active" : "")" 
-                            @onclick="@(() => selectedAssetType = "Deposito")">Depósito a Prazo</button>
-                    <button class="tab-button @(selectedAssetType == "Fundo" ? "active" : "")" 
-                            @onclick="@(() => selectedAssetType = "Fundo")">Fundo de Investimento</button>
-                    <button class="tab-button @(selectedAssetType == "Imovel" ? "active" : "")" 
-                            @onclick="@(() => selectedAssetType = "Imovel")">Imóvel Arrendado</button>
-                </div>
-                
-                <!-- Common Fields for All Asset Types -->
-                <div class="form-group">
-                    <label>Nome</label>
-                    <input type="text" @bind="newAsset.Name" required />
-                </div>
-                <div class="form-group">
-                    <label>Valor</label>
-                    <input type="number" step="0.01" @bind="newAsset.Value" required />
-                </div>
-                
-                @if (selectedAssetType == "Deposito")
-                {
-                    <!-- Fields Specific to Deposit -->
-                    <div class="form-group">
-                        <label>Banco</label>
-                        <input type="text" @bind="newAsset.Bank" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Número da Conta</label>
-                        <input type="text" @bind="newAsset.AccountNumber" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Titulares</label>
-                        <input type="text" @bind="newAsset.Holders" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Taxa de Juro Anual (%)</label>
-                        <input type="number" step="0.01" @bind="newAsset.InterestRate" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Data de Vencimento</label>
-                        <input type="date" @bind="newAsset.MaturityDate" />
-                    </div>
-                }
-                else if (selectedAssetType == "Fundo")
-                {
-                    <!-- Fields Specific to Fund -->
-                    <div class="form-group">
-                        <label>Gestor do Fundo</label>
-                        <input type="text" @bind="newAsset.Manager" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Taxa de Juro por Defeito (%)</label>
-                        <input type="number" step="0.01" @bind="newAsset.DefaultInterestRate" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Nível de Risco</label>
-                        <select @bind="newAsset.RiskLevel">
-                            <option value="Baixo">Baixo</option>
-                            <option value="Médio">Médio</option>
-                            <option value="Alto">Alto</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Período de Resgate (dias)</label>
-                        <input type="number" @bind="newAsset.RedemptionPeriod" />
-                    </div>
-                    <div class="form-group">
-                        <label>Taxas Específicas por Mês</label>
-                        <div class="month-rates">
-                            @for (int i = 0; i < 12; i++)
-                            {
-                                int month = i;
-                                <div class="month-rate">
-                                    <label>@(CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(i + 1))</label>
-                                    <input type="number" step="0.01" @bind="monthlyRates[i]" />
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
-                else if (selectedAssetType == "Imovel")
-                {
-                    <!-- Fields Specific to Property -->
-                    <div class="form-group">
-                        <label>Designação</label>
-                        <input type="text" @bind="newAsset.Description" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Localização/Morada</label>
-                        <input type="text" @bind="newAsset.Location" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Valor do Imóvel</label>
-                        <input type="number" step="0.01" @bind="newAsset.PropertyValue" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Valor da Renda Mensal</label>
-                        <input type="number" step="0.01" @bind="newAsset.MonthlyRent" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Valor Mensal do Condomínio</label>
-                        <input type="number" step="0.01" @bind="newAsset.MonthlyCondo" />
-                    </div>
-                    <div class="form-group">
-                        <label>Despesas Anuais Estimadas</label>
-                        <input type="number" step="0.01" @bind="newAsset.AnnualExpenses" />
-                    </div>
-                }
-            </div>
-            <div class="modal-footer">
-                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
-                <button class="save-button" @onclick="SaveAsset">Salvar</button>
-            </div>
+    <div class="loading-container">
+        <div class="loading-spinner">
+            <p>Carregando...</p>
         </div>
     </div>
 }
-
-<!-- View Asset Details Modal -->
-@if (showViewModal && selectedAsset != null)
+else if (isAuthenticated)
 {
-    <div class="modal-overlay">
-        <div class="modal details-modal">
-            <div class="modal-header">
-                <h2>Detalhes do Ativo</h2>
-                <button class="close-button" @onclick="CloseModal">×</button>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Gestão Ativos</h2>
             </div>
-            <div class="modal-body">
-                <div class="asset-details-header">
-                    <h3>@selectedAsset.Name</h3>
-                    <span class="asset-type-tag">@GetAssetTypeName(selectedAsset.Type)</span>
+            <nav class="sidebar-nav">
+                @if (userRole == "Utilizador")
+                {
+                    <a href="/main" class="nav-item @(NavigationManager.Uri.EndsWith("/main") ? "active" : "")">
+                        <div class="nav-icon dashboard-nav-icon"></div>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/portfolio" class="nav-item @(NavigationManager.Uri.EndsWith("/portfolio") ? "active" : "")">
+                        <div class="nav-icon portfolio-nav-icon"></div>
+                        <span>Carteira</span>
+                    </a>
+                    <a href="/transactions" class="nav-item @(NavigationManager.Uri.EndsWith("/transactions") ? "active" : "")">
+                        <div class="nav-icon transactions-nav-icon"></div>
+                        <span>Transações</span>
+                    </a>
+                }
+                else if (userRole == "GestorUtilizadores")
+                {
+                    <a href="/main" class="nav-item @(NavigationManager.Uri.EndsWith("/main") ? "active" : "")">
+                        <div class="nav-icon dashboard-nav-icon"></div>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/portfolio" class="nav-item @(NavigationManager.Uri.EndsWith("/portfolio") ? "active" : "")">
+                        <div class="nav-icon portfolio-nav-icon"></div>
+                        <span>Carteira</span>
+                    </a>
+                    <a href="/transactions" class="nav-item @(NavigationManager.Uri.EndsWith("/transactions") ? "active" : "")">
+                        <div class="nav-icon transactions-nav-icon"></div>
+                        <span>Transações</span>
+                    </a>
+                    <a href="/reports" class="nav-item @(NavigationManager.Uri.EndsWith("/reports") ? "active" : "")">
+                        <div class="nav-icon reports-nav-icon"></div>
+                        <span>Relatórios</span>
+                    </a>
+                }
+            </nav>
+            <div class="sidebar-footer">
+                <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                    <div class="nav-icon logout-nav-icon"></div>
+                    <span>Sair</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <header class="dashboard-header">
+                <div class="dashboard-title">
+                    <h1>Carteira</h1>
+                    <p>Gestão dos seus ativos financeiros</p>
                 </div>
-                
-                <div class="asset-details-content">
-                    <div class="detail-section">
-                        <h4>Informações Gerais</h4>
-                        <div class="detail-row">
-                            <div class="detail-item">
-                                <span class="detail-label">Valor Total:</span>
-                                <span class="detail-value">@FormatCurrency(selectedAsset.Value)</span>
+                <div class="user-profile">
+                    <span class="user-greeting">Olá, <strong>@userName</strong></span>
+                    <button class="user-menu-button" @onclick="ToggleUserMenu">
+                        <div class="avatar">@userInitials</div>
+                        @if (showUserMenu)
+                        {
+                            <div class="user-menu">
+                                <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                                <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
                             </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Retorno:</span>
-                                <span class="detail-value return-value">+@selectedAsset.Return%</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Data de Aquisição:</span>
-                                <span class="detail-value">@selectedAsset.AcquisitionDate.ToString("dd/MM/yyyy")</span>
-                            </div>
+                        }
+                    </button>
+                </div>
+            </header>
+
+            <div class="portfolio-container">
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="card-icon blue-icon">€</div>
+                        <div class="card-content">
+                            <h3>@FormatCurrency(totalValue)</h3>
+                            <p>Valor Total da Carteira</p>
                         </div>
                     </div>
-                    
-                    @if (selectedAsset.Type == "Deposito")
-                    {
-                        <div class="detail-section">
-                            <h4>Detalhes do Depósito</h4>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Banco:</span>
-                                    <span class="detail-value">@selectedAsset.Bank</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Número da Conta:</span>
-                                    <span class="detail-value">@selectedAsset.AccountNumber</span>
-                                </div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Titulares:</span>
-                                    <span class="detail-value">@selectedAsset.Holders</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Taxa de Juro Anual:</span>
-                                    <span class="detail-value">@selectedAsset.InterestRate%</span>
-                                </div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Data de Vencimento:</span>
-                                    <span class="detail-value">@(selectedAsset.MaturityDate?.ToString("dd/MM/yyyy") ?? "N/A")</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Juro Mensal:</span>
-                                    <span class="detail-value">@FormatCurrency(selectedAsset.Value * selectedAsset.InterestRate / 100 / 12)</span>
-                                </div>
-                            </div>
+                    <div class="summary-card">
+                        <div class="card-icon green-icon">%</div>
+                        <div class="card-content">
+                            <h3>@FormatPercentage(monthlyReturn)</h3>
+                            <p>Retorno Mensal</p>
                         </div>
-                    }
-                    else if (selectedAsset.Type == "Fundo")
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon yellow-icon">€</div>
+                        <div class="card-content">
+                            <h3>@FormatCurrency(monthlyIncome)</h3>
+                            <p>Rendimento Mensal</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon red-icon">#</div>
+                        <div class="card-content">
+                            <h3>@alerts</h3>
+                            <p>Alertas Ativos</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Display -->
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="error-message">
+                        <div class="error-content">
+                            <strong>Erro:</strong> @errorMessage
+                            <button class="error-close" @onclick="ClearError">×</button>
+                        </div>
+                    </div>
+                }
+
+                <!-- Success Display -->
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <div class="success-message">
+                        <div class="success-content">
+                            <strong>Sucesso:</strong> @successMessage
+                            <button class="success-close" @onclick="ClearSuccess">×</button>
+                        </div>
+                    </div>
+                }
+
+                <!-- Search and Add Controls -->
+                <div class="actions-bar">
+                    <div class="search-container">
+                        <input type="text" placeholder="Pesquisar ativos..." @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchAssets" />
+                        <div class="filter-container">
+                            <select @bind="selectedType" @bind:after="FilterByType">
+                                <option value="">Todos os Tipos</option>
+                                <option value="DepositoAPrazo">Depósitos a Prazo</option>
+                                <option value="FundoInvestimento">Fundos de Investimento</option>
+                                <option value="ImovelArrendamento">Imóveis Arrendados</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="add-asset-btn" @onclick="ShowAddAssetModal">
+                        <span class="add-icon">+</span>
+                        Adicionar Ativo
+                    </button>
+                </div>
+
+                <!-- Assets List -->
+                <div class="assets-section">
+                    <div class="section-header">
+                        <h2>Meus Ativos</h2>
+                        <div class="view-toggle">
+                            <button class="@(viewMode == "list" ? "active" : "")" @onclick="@(() => viewMode = "list")">
+                                <i class="list-view-icon"></i>
+                            </button>
+                            <button class="@(viewMode == "grid" ? "active" : "")" @onclick="@(() => viewMode = "grid")">
+                                <i class="grid-view-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (filteredAssets != null && filteredAssets.Any())
                     {
-                        <div class="detail-section">
-                            <h4>Detalhes do Fundo</h4>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Gestor:</span>
-                                    <span class="detail-value">@selectedAsset.Manager</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Nível de Risco:</span>
-                                    <span class="detail-value">@selectedAsset.RiskLevel</span>
-                                </div>
+                        @if (viewMode == "list")
+                        {
+                            <div class="assets-list">
+                                <table>
+                                    <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Tipo</th>
+                                        <th>Valor</th>
+                                        <th>Retorno</th>
+                                        <th>Data de Início</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach (var asset in filteredAssets)
+                                    {
+                                        <tr>
+                                            <td>@GetAssetDisplayName(asset)</td>
+                                            <td>@GetAssetTypeName(asset.TipoAtivo)</td>
+                                            <td>@FormatCurrency((decimal)asset.ValorInvestido)</td>
+                                            <td class="return-value">@asset.TaxaPercentagem.ToString("0.0")%</td>
+                                            <td>@asset.DataAquisicao.ToString("dd/MM/yyyy")</td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Taxa por Defeito:</span>
-                                    <span class="detail-value">@selectedAsset.DefaultInterestRate%</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Período de Resgate:</span>
-                                    <span class="detail-value">@selectedAsset.RedemptionPeriod dias</span>
-                                </div>
-                            </div>
-                            
-                            <h4 class="mt-4">Taxas Específicas por Mês</h4>
-                            <div class="monthly-rates-grid">
-                                @for (int i = 0; i < 12; i++)
+                        }
+                        else
+                        {
+                            <div class="assets-grid">
+                                @foreach (var asset in filteredAssets)
                                 {
-                                    <div class="monthly-rate-item">
-                                        <span class="month-name">@CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i + 1)</span>
-                                        <span class="month-rate">@(selectedAsset.MonthlyRates != null && i < selectedAsset.MonthlyRates.Count ? selectedAsset.MonthlyRates[i] + "%" : selectedAsset.DefaultInterestRate + "%")</span>
+                                    <div class="asset-card @asset.TipoAtivo.ToLower()">
+                                        <div class="asset-card-header">
+                                            <h3>@GetAssetDisplayName(asset)</h3>
+                                            <span class="asset-type-tag">@GetAssetTypeName(asset.TipoAtivo)</span>
+                                        </div>
+                                        <div class="asset-card-body">
+                                            <div class="asset-detail">
+                                                <span class="detail-label">Valor:</span>
+                                                <span class="detail-value">@FormatCurrency((decimal)asset.ValorInvestido)</span>
+                                            </div>
+                                            <div class="asset-detail">
+                                                <span class="detail-label">Retorno:</span>
+                                                <span class="detail-value return-value">@asset.TaxaPercentagem.ToString("0.0")%</span>
+                                            </div>
+                                            <div class="asset-detail">
+                                                <span class="detail-label">Data de Início:</span>
+                                                <span class="detail-value">@asset.DataAquisicao.ToString("dd/MM/yyyy")</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 }
                             </div>
-                        </div>
+                        }
                     }
-                    else if (selectedAsset.Type == "Imovel")
+                    else
                     {
-                        <div class="detail-section">
-                            <h4>Detalhes do Imóvel</h4>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Designação:</span>
-                                    <span class="detail-value">@selectedAsset.Description</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Localização:</span>
-                                    <span class="detail-value">@selectedAsset.Location</span>
-                                </div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Valor do Imóvel:</span>
-                                    <span class="detail-value">@FormatCurrency(selectedAsset.PropertyValue)</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Renda Mensal:</span>
-                                    <span class="detail-value">@FormatCurrency(selectedAsset.MonthlyRent)</span>
-                                </div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Condomínio Mensal:</span>
-                                    <span class="detail-value">@FormatCurrency(selectedAsset.MonthlyCondo)</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Despesas Anuais:</span>
-                                    <span class="detail-value">@FormatCurrency(selectedAsset.AnnualExpenses)</span>
-                                </div>
-                            </div>
-                            
-                            <h4 class="mt-4">Análise Financeira</h4>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Rendimento Anual Bruto:</span>
-                                    <span class="detail-value">@FormatCurrency(selectedAsset.MonthlyRent * 12)</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Despesas Totais Anuais:</span>
-                                    <span class="detail-value">@FormatCurrency((selectedAsset.MonthlyCondo * 12) + selectedAsset.AnnualExpenses)</span>
-                                </div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-item">
-                                    <span class="detail-label">Resultado Líquido Anual:</span>
-                                    <span class="detail-value">@FormatCurrency((selectedAsset.MonthlyRent * 12) - ((selectedAsset.MonthlyCondo * 12) + selectedAsset.AnnualExpenses))</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Taxa de Rentabilidade:</span>
-                                    <span class="detail-value">@((selectedAsset.PropertyValue > 0 ? Math.Round(((selectedAsset.MonthlyRent * 12) / selectedAsset.PropertyValue) * 100, 2) : 0).ToString("0.00"))%</span>
-                                </div>
-                            </div>
+                        <div class="empty-state">
+                            <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                            <h3>Sem ativos encontrados</h3>
+                            <p>Não há ativos que correspondam aos critérios de pesquisa</p>
                         </div>
                     }
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="edit-button" @onclick="() => EditAsset(selectedAsset.Id)">Editar</button>
-                <button class="close-modal-button" @onclick="CloseModal">Fechar</button>
-            </div>
         </div>
     </div>
 }
 
-<!-- Delete Confirmation Modal -->
-@if (showDeleteModal)
+@if (showAddAssetModal)
 {
-    <div class="modal-overlay">
-        <div class="modal delete-modal">
+    <div class="modal-overlay" @onclick="HideAddAssetModal">
+        <div class="modal-content" @onclick:stopPropagation="true">
             <div class="modal-header">
-                <h2>Confirmar Exclusão</h2>
-                <button class="close-button" @onclick="CloseModal">×</button>
+                <h3>Adicionar Novo Ativo</h3>
+                <button class="close-btn" @onclick="HideAddAssetModal">×</button>
             </div>
             <div class="modal-body">
-                <p>Tem certeza que deseja excluir este ativo?</p>
-                <p><strong>@(assetToDelete?.Name)</strong></p>
-                <p>Esta ação não pode ser desfeita.</p>
+                <div class="form-group">
+                    <label>Tipo de Ativo:</label>
+                    <select @bind="newAsset.TipoAtivo" @bind:after="OnAssetTypeChange">
+                        <option value="">Selecione o tipo</option>
+                        <option value="DepositoAPrazo">Depósito a Prazo</option>
+                        <option value="FundoInvestimento">Fundo de Investimento</option>
+                        <option value="ImovelArrendamento">Imóvel Arrendado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Investido:</label>
+                    <input type="number" @bind="newAsset.ValorInvestido" placeholder="0.00" step="0.01" />
+                </div>
+
+                <div class="form-group">
+                    <label>Taxa de Retorno (%):</label>
+                    <input type="number" @bind="newAsset.TaxaPercentagem" placeholder="0.0" step="0.1" />
+                </div>
+
+                <div class="form-group">
+                    <label>Data de Aquisição:</label>
+                    <input type="date" @bind="tempDataAquisicao" @bind:format="yyyy-MM-dd" @bind:after="OnDateChanged" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(newAsset.TipoAtivo))
+                {
+                    @if (newAsset.TipoAtivo == "DepositoAPrazo")
+                    {
+                        <div class="form-group">
+                            <label>Banco:</label>
+                            <input type="text" @bind="depositoDetails.Banco" placeholder="Ex: Banco Santander" />
+                        </div>
+                        <div class="form-group">
+                            <label>Número da Conta:</label>
+                            <input type="text" @bind="depositoDetails.NumeroConta" placeholder="Ex: 123456789" />
+                        </div>
+                    }
+                    else if (newAsset.TipoAtivo == "FundoInvestimento")
+                    {
+                        <div class="form-group">
+                            <label>Nome do Fundo:</label>
+                            <input type="text" @bind="fundoDetails.Nome" placeholder="Ex: Fundo Ações Europa" />
+                        </div>
+                        <div class="form-group">
+                            <label>Duração (meses):</label>
+                            <input type="number" @bind="fundoDetails.DuracaoMeses" placeholder="12" min="1" />
+                        </div>
+                    }
+                    else if (newAsset.TipoAtivo == "ImovelArrendamento")
+                    {
+                        <div class="form-group">
+                            <label>Designação: <span style="color: red;">*</span></label>
+                            <input type="text" @bind="imovelDetails.Designacao" placeholder="Ex: Apartamento T2 no centro da cidade" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Localização:</label>
+                            <input type="text" @bind="imovelDetails.Morada" placeholder="Ex: Rua das Flores, 123" />
+                        </div>
+                        <div class="form-group">
+                            <label>Renda Mensal: <span style="color: red;">*</span></label>
+                            <input type="number" @bind="imovelDetails.ValorRenda" placeholder="0.00" step="0.01" min="0.01" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Taxa de Condomínio:</label>
+                            <input type="number" @bind="imovelDetails.TaxaCondominio" placeholder="0.00" step="0.01" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>Despesas Anuais:</label>
+                            <input type="number" @bind="imovelDetails.DespesasAnuais" placeholder="0.00" step="0.01" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>Percentagem de Propriedade (%):</label>
+                            <input type="number" @bind="imovelDetails.PercentagemPropriedade" placeholder="100" step="0.1" min="0.1" max="100" />
+                        </div>
+                    }
+                }
             </div>
             <div class="modal-footer">
-                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
-                <button class="delete-button" @onclick="ConfirmDeleteAsset">Excluir</button>
+                <button class="btn-secondary" @onclick="HideAddAssetModal">Cancelar</button>
+                <button class="btn-primary" @onclick="CreateAsset" disabled="@(isCreatingAsset || !IsFormValid())" >
+                    @if (isCreatingAsset)
+                    {
+                        <span>Criando...</span>
+                    }
+                    else
+                    {
+                        <span>Criar Ativo</span>
+                    }
+                </button>
             </div>
         </div>
     </div>
 }
 
-@code {
-    private string userName = "João Silva";
-    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
-    private bool showUserMenu = false;
-    
-    // Asset Management
-    private List<FinancialAsset> assets = new List<FinancialAsset>();
-    private List<FinancialAsset> filteredAssets = new List<FinancialAsset>();
-    private string searchTerm = "";
-    private string selectedType = "";
-    private decimal minValue = 0;
-    private string viewMode = "list";
-    
-    // Summary Statistics
-    private decimal totalValue;
-    private decimal monthlyReturn;
-    private decimal monthlyIncome;
-    private int alerts;
-    
-    // Asset Distribution
-    private decimal depositValue;
-    private decimal fundsValue;
-    private decimal propertiesValue;
-    private int depositPercentage;
-    private int fundsPercentage;
-    private int propertiesPercentage;
-    
-    // Modal States
-    private bool showAddModal = false;
-    private bool showViewModal = false;
-    private bool showDeleteModal = false;
-    private int editingAssetId = 0;
-    private string selectedAssetType = "Deposito";
-    private FinancialAsset newAsset = new FinancialAsset();
-    private FinancialAsset selectedAsset;
-    private FinancialAsset assetToDelete;
-    private decimal[] monthlyRates = new decimal[12];
-    
-    protected override async Task OnInitializedAsync()
-    {
-        // In a real app, we would load from AssetService
-        await LoadMockData();
-        
-        // Calculate summary statistics
-        CalculateSummaryStatistics();
-        
-        // Set filtered assets to all assets initially
-        filteredAssets = new List<FinancialAsset>(assets);
-    }
-    // Adicione estes métodos ao seu arquivo .razor ou .razor.cs
-    private void HandleTypeChange(ChangeEventArgs e)
-    {
-        selectedType = e.Value?.ToString() ?? "";
-        FilterByType();
+<style>
+    .app-container {
+        display: flex;
+        min-height: 100vh;
+        background-color: #f8fafc;
+        color: #334155;
     }
 
-    private void HandleValueChange(ChangeEventArgs e)
-    {
-        if (decimal.TryParse(e.Value?.ToString(), out decimal newValue))
-        {
-            minValue = newValue;
-            FilterByValue();
-        }
+    .sidebar {
+        width: 250px;
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        color: white;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        height: 100vh;
     }
-    private async Task LoadMockData()
+
+    .sidebar-header {
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .sidebar-header h2 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #e2e8f0;
+    }
+
+    .sidebar-nav {
+        flex-grow: 1;
+    }
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        color: #cbd5e1;
+        text-decoration: none;
+        transition: background-color 0.2s, color 0.2s;
+    }
+
+    .nav-item:hover {
+        background-color: #334155;
+        color: white;
+    }
+
+    .nav-item.active {
+        background-color: #3b82f6;
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 12px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        filter: invert(1);
+    }
+
+    .dashboard-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>'); }
+    .portfolio-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v-4h-2Z"></path></svg>'); }
+    .transactions-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'); }
+    .reports-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>'); }
+    .logout-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>'); }
+
+    .sidebar-footer {
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid #334155;
+    }
+
+    .main-content {
+        flex-grow: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    .loading-spinner::after {
+        content: "";
+        display: block;
+        width: 40px;
+        height: 40px;
+        margin: 20px auto;
+        border-radius: 50%;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        animation: spin 1s linear infinite;
+    }
+
+    .loading-spinner p {
+        margin: 0;
+        color: #333;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .dashboard-title h1 {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .dashboard-title p {
+        color: #64748b;
+        font-size: 16px;
+    }
+
+    .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+    }
+
+    .user-greeting {
+        font-size: 16px;
+        color: #64748b;
+    }
+
+    .user-menu-button {
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    .avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 18px;
+        cursor: pointer;
+    }
+
+    .user-menu {
+        position: absolute;
+        right: 0;
+        top: 60px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 200px;
+        z-index: 100;
+        overflow: hidden;
+    }
+
+    .user-menu-item {
+        display: block;
+        padding: 12px 16px;
+        color: #334155;
+        text-decoration: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .user-menu-item:hover {
+        background-color: #f8fafc;
+    }
+
+    .user-menu-item.logout {
+        color: #e53e3e;
+    }
+
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 28px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+    }
+
+    .blue-icon { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .red-icon { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+    .green-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .yellow-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+    .card-content h3 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .card-content p {
+        font-size: 15px;
+        color: #64748b;
+    }
+
+    .error-message, .success-message {
+        margin-bottom: 24px;
+        border-radius: 8px;
+        padding: 16px;
+        position: relative;
+    }
+
+    .error-message {
+        background-color: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+    }
+
+    .success-message {
+        background-color: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        color: #16a34a;
+    }
+
+    .error-content, .success-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .error-close, .success-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .actions-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        background: white;
+        border-radius: 12px;
+        padding: 20px 28px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .search-container {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        flex-grow: 1;
+    }
+
+    .search-container input[type="text"] {
+        flex-grow: 1;
+        min-width: 200px;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 15px;
+        background: #f8fafc;
+    }
+
+    .search-container input[type="text"]:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .filter-container {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .filter-container select {
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 15px;
+        background: #f8fafc;
+        appearance: none;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 16px;
+        padding-right: 30px;
+    }
+
+    .filter-container select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .assets-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 28px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .section-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .view-toggle {
+        display: flex;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .view-toggle button {
+        background: none;
+        border: none;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .view-toggle button.active {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .view-toggle button:hover:not(.active) {
+        background-color: #f1f5f9;
+    }
+
+    .list-view-icon {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>');
+        width: 20px;
+        height: 20px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    .grid-view-icon {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>');
+        width: 20px;
+        height: 20px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    .view-toggle button.active .list-view-icon,
+    .view-toggle button.active .grid-view-icon {
+        filter: invert(1);
+    }
+
+    .assets-list {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    .assets-list table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 800px;
+    }
+
+    .assets-list th, .assets-list td {
+        text-align: left;
+        padding: 16px 28px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 15px;
+        vertical-align: middle;
+    }
+
+    .assets-list th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    .assets-list tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .assets-list tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .assets-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        padding: 28px;
+    }
+
+    .asset-card {
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .asset-card-header {
+        background: #e2e8f0;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #cbd5e1;
+    }
+
+    .asset-card-header h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .asset-type-tag {
+        background: #3b82f6;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .asset-card-body {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex-grow: 1;
+    }
+
+    .asset-detail {
+        display: flex;
+        justify-content: space-between;
+        font-size: 15px;
+    }
+
+    .detail-label {
+        color: #64748b;
+    }
+
+    .detail-value {
+        font-weight: 500;
+        color: #1e293b;
+    }
+
+    .return-value {
+        color: #16a34a;
+        font-weight: 500;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 28px;
+        color: #64748b;
+    }
+
+    .empty-state h3 {
+        margin-bottom: 12px;
+        color: #475569;
+        font-size: 18px;
+    }
+
+    .empty-state p {
+        font-size: 16px;
+    }
+
+    .add-asset-btn {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 20px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .add-asset-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    }
+
+    .add-icon {
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 28px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-header h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+    }
+
+    .close-btn:hover {
+        background: #f1f5f9;
+        color: #334155;
+    }
+
+    .modal-body {
+        padding: 28px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 15px;
+        background: #f8fafc;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: white;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 28px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary {
+        background: #f8fafc;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    
+</style>
+
+@code {
+    // Properties
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private string userName = "Utilizador";
+    private string userRole = "";
+    private string userInitials => GetUserInitials(userName);
+    private bool showUserMenu = false;
+
+    // Messages
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    // Asset Management
+    private List<AtivoFinanceiroDto> assets = new List<AtivoFinanceiroDto>();
+    private List<AtivoFinanceiroDto> filteredAssets = new List<AtivoFinanceiroDto>();
+    private string searchTerm = "";
+    private string selectedType = "";
+    private string viewMode = "list";
+
+    // Summary Statistics
+    private decimal totalValue = 0;
+    private decimal monthlyReturn = 0;
+    private decimal monthlyIncome = 0;
+    private int alerts = 0;
+
+    // Modal for asset creation
+    private bool showAddAssetModal = false;
+    private bool isCreatingAsset = false;
+    private AtivoFinanceiroDto newAsset = new AtivoFinanceiroDto();
+    private DepositoDto depositoDetails = new DepositoDto();
+    private FundoInvestimentoDto fundoDetails = new FundoInvestimentoDto();
+    private ImovelArrendamentoDto imovelDetails = new ImovelArrendamentoDto();
+
+    // Helper property for date handling
+    private DateTime tempDataAquisicao = DateTime.Now;
+
+    private void ClearError()
     {
-        // This would typically come from a service in a real implementation
-        assets = new List<FinancialAsset>
+        errorMessage = "";
+        StateHasChanged();
+    }
+
+    private void ClearSuccess()
+    {
+        successMessage = "";
+        StateHasChanged();
+    }
+
+    // Map UI type names to database type names
+    private string MapTipoToDatabase(string uiTipo)
+    {
+        return uiTipo switch
         {
-            // Depósitos
-            new FinancialAsset 
-            { 
-                Id = 1, 
-                Name = "Depósito a Prazo Millennium", 
-                Type = "Deposito", 
-                Value = 87500m, 
-                Return = 2.5m, 
-                Bank = "Millennium BCP", 
-                AccountNumber = "PT50123456789012345678901",
-                Holders = "João Silva",
-                InterestRate = 2.5m,
-                AcquisitionDate = DateTime.Now.AddMonths(-6),
-                MaturityDate = DateTime.Now.AddMonths(6)
-            },
-            new FinancialAsset 
-            { 
-                Id = 2, 
-                Name = "Depósito Poupança Novobanco", 
-                Type = "Deposito", 
-                Value = 26530m, 
-                Return = 2.1m, 
-                Bank = "Novobanco", 
-                AccountNumber = "PT50234567890123456789012",
-                Holders = "João Silva, Maria Silva",
-                InterestRate = 2.1m,
-                AcquisitionDate = DateTime.Now.AddMonths(-12),
-                MaturityDate = DateTime.Now.AddMonths(12)
-            },
-            
-            // Fundos
-            new FinancialAsset 
-            { 
-                Id = 3, 
-                Name = "Fundo PPR Reforma Segura", 
-                Type = "Fundo", 
-                Value = 75320m, 
-                Return = 7.8m, 
-                Manager = "Optimize Investment Partners",
-                DefaultInterestRate = 7.8m,
-                RiskLevel = "Médio",
-                RedemptionPeriod = 90,
-                AcquisitionDate = DateTime.Now.AddMonths(-18),
-                MonthlyRates = new List<decimal> { 7.1m, 7.3m, 7.4m, 7.6m, 7.7m, 7.9m, 8.0m, 8.1m, 8.0m, 7.9m, 7.8m, 7.7m }
-            },
-            new FinancialAsset 
-            { 
-                Id = 4, 
-                Name = "Fundo de Ações Europeias", 
-                Type = "Fundo", 
-                Value = 54880m, 
-                Return = 9.2m, 
-                Manager = "Caixa Gestão de Ativos",
-                DefaultInterestRate = 9.2m,
-                RiskLevel = "Alto",
-                RedemptionPeriod = 30,
-                AcquisitionDate = DateTime.Now.AddMonths(-24),
-                MonthlyRates = new List<decimal> { 8.5m, 8.7m, 8.9m, 9.1m, 9.3m, 9.5m, 9.7m, 9.8m, 9.7m, 9.5m, 9.3m, 9.2m }
-            },
-            
-            // Imóveis
-            new FinancialAsset 
-            { 
-                Id = 5, 
-                Name = "Apartamento T2 Braga", 
-                Type = "Imovel", 
-                Value = 45000m, 
-                Return = 4.9m, 
-                Description = "Apartamento T2 em Braga",
-                Location = "Rua do Carmo, Braga",
-                PropertyValue = 180000m,
-                MonthlyRent = 650m,
-                MonthlyCondo = 75m,
-                AnnualExpenses = 1200m,
-                AcquisitionDate = DateTime.Now.AddYears(-3)
-            },
-            new FinancialAsset 
-            { 
-                Id = 6, 
-                Name = "Loja Comercial Porto", 
-                Type = "Imovel", 
-                Value = 36450m, 
-                Return = 5.3m, 
-                Description = "Loja Comercial no Centro do Porto",
-                Location = "Rua Santa Catarina, Porto",
-                PropertyValue = 145000m,
-                MonthlyRent = 820m,
-                MonthlyCondo = 120m,
-                AnnualExpenses = 1800m,
-                AcquisitionDate = DateTime.Now.AddYears(-5)
-            }
+            "DepositoAPrazo" => "DepositoAPrazo",
+            "FundoInvestimento" => "FundoInvestimento",
+            "ImovelArrendamento" => "ImovelArrendado",
+            _ => uiTipo
         };
     }
-    
-    private void CalculateSummaryStatistics()
+
+// Substitua o método CreateAsset() inteiro pelo seguinte:
+
+    private async Task CreateAsset()
     {
-        // Calculate total values
-        totalValue = assets.Sum(a => a.Value);
-        monthlyIncome = 
-            assets.Where(a => a.Type == "Deposito").Sum(a => a.Value * a.InterestRate / 100 / 12) +
-            assets.Where(a => a.Type == "Fundo").Sum(a => a.Value * a.Return / 100 / 12) +
-            assets.Where(a => a.Type == "Imovel").Sum(a => a.MonthlyRent - a.MonthlyCondo);
-        
-        // Calculate average return (weighted by value)
-        if (totalValue > 0)
+        try
         {
-            monthlyReturn = assets.Sum(a => a.Value * a.Return) / totalValue;
+            isCreatingAsset = true;
+            ClearError();
+            ClearSuccess();
+
+            if (string.IsNullOrEmpty(newAsset.TipoAtivo))
+            {
+                errorMessage = "Tipo de ativo não selecionado";
+                return;
+            }
+
+            Console.WriteLine($"🔄 Criando ativo: {newAsset.TipoAtivo} - Valor: {newAsset.ValorInvestido}");
+
+            // Create the AtivosFinanceiros record using exact model structure
+            var ativoFinanceiro = new Dictionary<string, object>
+            {
+                ["Id"] = Guid.NewGuid(),
+                ["Tipo"] = MapTipoToDatabase(newAsset.TipoAtivo),
+                ["DataInicio"] = DateOnly.FromDateTime(tempDataAquisicao),
+                ["TaxaPercentagem"] = Math.Max(0.0, newAsset.TaxaPercentagem)
+            };
+
+            Console.WriteLine($"📤 Enviando AtivosFinanceiros:");
+            Console.WriteLine($"   - Id: {ativoFinanceiro["Id"]}");
+            Console.WriteLine($"   - Tipo: {ativoFinanceiro["Tipo"]}");
+            Console.WriteLine($"   - DataInicio: {ativoFinanceiro["DataInicio"]}");
+            Console.WriteLine($"   - TaxaPercentagem: {ativoFinanceiro["TaxaPercentagem"]}");
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Converters = { new DateOnlyJsonConverter() }
+            };
+
+            var jsonContent = JsonSerializer.Serialize(ativoFinanceiro, jsonOptions);
+            Console.WriteLine($"📤 JSON enviado: {jsonContent}");
+
+            var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+            var ativoResponse = await Http.PostAsync("http://localhost:5189/api/AtivosFinanceiros", content);
+
+            if (!ativoResponse.IsSuccessStatusCode)
+            {
+                var ativoError = await ativoResponse.Content.ReadAsStringAsync();
+                errorMessage = $"Erro ao criar ativo financeiro: {ativoError}";
+                Console.WriteLine($"❌ Erro AtivosFinanceiros: {ativoError}");
+                return;
+            }
+
+            var responseContent = await ativoResponse.Content.ReadAsStringAsync();
+            Console.WriteLine($"✅ Resposta da API: {responseContent}");
+
+            var createdAtivoFinanceiro = JsonSerializer.Deserialize<JsonElement>(responseContent);
+            var ativoFinanceiroId = createdAtivoFinanceiro.GetProperty("id").GetGuid();
+            Console.WriteLine($"✅ AtivosFinanceiros criado com ID: {ativoFinanceiroId}");
+
+
+            Console.WriteLine($"✅ AtivosFinanceiros criado com ID: {ativoFinanceiroId}");
+
+            // Now create the specific asset with the AtivoId reference
+            string createdAssetId = "";
+            switch (newAsset.TipoAtivo)
+            {
+                case "DepositoAPrazo":
+                    createdAssetId = await CreateDeposito(ativoFinanceiroId);
+                    break;
+                case "FundoInvestimento":
+                    createdAssetId = await CreateFundoInvestimento(ativoFinanceiroId);
+                    break;
+                case "ImovelArrendamento":
+                    createdAssetId = await CreateImovelArrendamento(ativoFinanceiroId);
+                    break;
+                default:
+                    errorMessage = $"Tipo de ativo não suportado: {newAsset.TipoAtivo}";
+                    return;
+            }
+
+            if (string.IsNullOrEmpty(createdAssetId))
+            {
+                errorMessage = "Falha ao criar o ativo específico";
+                return;
+            }
+
+            // Finally, create the portfolio entry (Carteira)
+            var carteira = new Dictionary<string, object>
+            {
+                ["Id"] = Guid.NewGuid(),
+                ["UtilizadorId"] = UserStateService.UserId,
+                ["AtivoId"] = ativoFinanceiroId,
+                ["DataInicio"] = DateOnly.FromDateTime(tempDataAquisicao),
+                ["Montante"] = newAsset.ValorInvestido
+            };
+
+            var carteiraJsonContent = JsonSerializer.Serialize(carteira, jsonOptions);
+            var carteiraContent = new StringContent(carteiraJsonContent, System.Text.Encoding.UTF8, "application/json");
+            var carteiraResponse = await Http.PostAsync("http://localhost:5189/api/Carteira", carteiraContent);
+
+            if (carteiraResponse.IsSuccessStatusCode)
+            {
+                successMessage = "Ativo criado com sucesso!";
+                await LoadPortfolioData();
+                CalculateSummaryStatistics();
+                filteredAssets = new List<AtivoFinanceiroDto>(assets);
+                HideAddAssetModal();
+            }
+            else
+            {
+                var carteiraError = await carteiraResponse.Content.ReadAsStringAsync();
+                errorMessage = $"Erro ao adicionar ativo à carteira: {carteiraError}";
+                Console.WriteLine($"❌ Erro Carteira: {carteiraError}");
+            }
         }
-        
-        // Calculate alerts (currently just a static number for the UI)
-        alerts = 2;
-        
-        // Calculate asset values by type
-        depositValue = assets.Where(a => a.Type == "Deposito").Sum(a => a.Value);
-        fundsValue = assets.Where(a => a.Type == "Fundo").Sum(a => a.Value);
-        propertiesValue = assets.Where(a => a.Type == "Imovel").Sum(a => a.Value);
-        
-        // Calculate percentages
-        if (totalValue > 0)
+        catch (Exception ex)
         {
-            depositPercentage = (int)Math.Round((depositValue / totalValue) * 100);
-            fundsPercentage = (int)Math.Round((fundsValue / totalValue) * 100);
-            propertiesPercentage = (int)Math.Round((propertiesValue / totalValue) * 100);
+            errorMessage = $"Erro inesperado: {ex.Message}";
+            Console.WriteLine($"❌ Erro ao criar ativo: {ex.Message}");
+            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+        }
+        finally
+        {
+            isCreatingAsset = false;
+            StateHasChanged();
         }
     }
-    
+
+    private async Task<string> CreateDeposito(Guid ativoId)
+    {
+        try
+        {
+            // Corresponde exatamente ao modelo Deposito
+            var deposito = new Dictionary<string, object>
+            {
+                ["Id"] = Guid.NewGuid(),
+                ["AtivoId"] = ativoId, // Guid? no modelo
+                ["Montante"] = newAsset.ValorInvestido,
+                ["Banco"] = string.IsNullOrWhiteSpace(depositoDetails.Banco) ? "Banco Padrão" : depositoDetails.Banco,
+                ["NumeroConta"] = string.IsNullOrWhiteSpace(depositoDetails.NumeroConta) ? "000000000" : depositoDetails.NumeroConta,
+                ["TaxaJuros"] = newAsset.TaxaPercentagem,
+                ["Titulares"] = new List<string> { userName }
+            };
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            var jsonContent = JsonSerializer.Serialize(deposito, jsonOptions);
+            var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+            var response = await Http.PostAsync("http://localhost:5189/api/Deposito", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var created = JsonSerializer.Deserialize<JsonElement>(responseContent);
+                return created.GetProperty("id").GetString() ?? "";
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Erro ao criar depósito: {error}";
+                Console.WriteLine($"❌ Erro Deposito: {error}");
+                return "";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao criar depósito: {ex.Message}";
+            Console.WriteLine($"❌ Exception Deposito: {ex.Message}");
+            return "";
+        }
+    }
+
+    private async Task<string> CreateFundoInvestimento(Guid ativoId)
+    {
+        try
+        {
+            // Corresponde exatamente ao modelo FundosInvestimento
+            var fundo = new Dictionary<string, object>
+            {
+                ["Id"] = Guid.NewGuid(),
+                ["AtivoId"] = ativoId, // Guid? no modelo
+                ["Nome"] = string.IsNullOrWhiteSpace(fundoDetails.Nome) ? "Fundo de Investimento" : fundoDetails.Nome,
+                ["MontanteInvestido"] = newAsset.ValorInvestido,
+                ["DuracaoMeses"] = fundoDetails.DuracaoMeses > 0 ? fundoDetails.DuracaoMeses : 12,
+                ["TaxaJurosPadrao"] = newAsset.TaxaPercentagem
+            };
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            var jsonContent = JsonSerializer.Serialize(fundo, jsonOptions);
+            var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+            var response = await Http.PostAsync("http://localhost:5189/api/FundosInvestimentos", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var created = JsonSerializer.Deserialize<JsonElement>(responseContent);
+                return created.GetProperty("id").GetString() ?? "";
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Erro ao criar fundo de investimento: {error}";
+                Console.WriteLine($"❌ Erro FundoInvestimento: {error}");
+                return "";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao criar fundo de investimento: {ex.Message}";
+            Console.WriteLine($"❌ Exception FundoInvestimento: {ex.Message}");
+            return "";
+        }
+    }
+
+    private async Task<string> CreateImovelArrendamento(Guid ativoId)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(imovelDetails.Designacao))
+            {
+                errorMessage = "Designação do imóvel é obrigatória";
+                return "";
+            }
+
+            if (imovelDetails.ValorRenda <= 0)
+            {
+                errorMessage = "Valor da renda deve ser maior que zero";
+                return "";
+            }
+
+            // Corresponde exatamente ao modelo ImoveisArrendamento
+            var imovel = new Dictionary<string, object>
+            {
+                ["Id"] = Guid.NewGuid(),
+                ["AtivoId"] = ativoId, // Guid? no modelo
+                ["Designacao"] = imovelDetails.Designacao.Trim(),
+                ["LocalizacaoId"] = (Guid?)null, // Guid? no modelo
+                ["ValorPropriedade"] = newAsset.ValorInvestido,
+                ["ValorRenda"] = imovelDetails.ValorRenda,
+                ["TaxaCondominio"] = imovelDetails.TaxaCondominio,
+                ["DespesasAnuais"] = imovelDetails.DespesasAnuais,
+                ["PercentagemPropriedade"] = imovelDetails.PercentagemPropriedade > 0 ? imovelDetails.PercentagemPropriedade : 100
+            };
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            var jsonContent = JsonSerializer.Serialize(imovel, jsonOptions);
+            var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+            var response = await Http.PostAsync("http://localhost:5189/api/ImoveisArrendamento", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var created = JsonSerializer.Deserialize<JsonElement>(responseContent);
+                return created.GetProperty("id").GetString() ?? "";
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Erro ao criar imóvel: {error}";
+                Console.WriteLine($"❌ Erro Imovel: {error}");
+                return "";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao criar imóvel: {ex.Message}";
+            Console.WriteLine($"❌ Exception Imovel: {ex.Message}");
+            return "";
+        }
+    }
+
+    private string GetUserInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "U";
+        return string.Join("", name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(n => char.ToUpper(n[0])));
+    }
+
+    private void HideAddAssetModal()
+    {
+        showAddAssetModal = false;
+        ClearError();
+        ClearSuccess();
+    }
+
+    private async Task LoadPortfolioData()
+    {
+        try
+        {
+            Console.WriteLine("🔄 Carregando dados da carteira...");
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { new DateOnlyJsonConverter() }
+            };
+
+            var carteiraResponse = await Http.GetAsync($"http://localhost:5189/api/Carteira");
+
+            if (carteiraResponse.IsSuccessStatusCode)
+            {
+                var jsonString = await carteiraResponse.Content.ReadAsStringAsync();
+                Console.WriteLine($"📄 Raw JSON response: {jsonString}");
+
+                var carteiraItems = JsonSerializer.Deserialize<List<CarteiraDto>>(jsonString, jsonOptions) ?? new List<CarteiraDto>();
+
+                var userCarteira = carteiraItems.Where(c => c.UtilizadorId == UserStateService.UserId).ToList();
+
+                assets = userCarteira.Select(c => new AtivoFinanceiroDto
+                {
+                    id = c.Id.ToString(),
+                    UtilizadorId = c.UtilizadorId ?? Guid.Empty,
+                    AtivoId = c.AtivoId?.ToString() ?? "",
+                    TipoAtivo = "Unknown",
+                    DataAquisicao = c.DataInicio,
+                    ValorInvestido = c.Montante,
+                    TaxaPercentagem = 0
+                }).ToList();
+
+                Console.WriteLine($"✅ Carregados {assets.Count} ativos da carteira");
+            }
+            else
+            {
+                Console.WriteLine($"⚠️ API de Carteira retornou status: {carteiraResponse.StatusCode}");
+                assets = new List<AtivoFinanceiroDto>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar dados da carteira: {ex.Message}");
+            assets = new List<AtivoFinanceiroDto>();
+        }
+    }
+
+    private void CalculateSummaryStatistics()
+    {
+        totalValue = assets?.Sum(a => (decimal)a.ValorInvestido) ?? 0;
+        monthlyIncome = assets?.Sum(a => (decimal)a.ValorInvestido * (decimal)a.TaxaPercentagem / 100 / 12) ?? 0;
+
+        if (totalValue > 0 && assets != null && assets.Any())
+        {
+            monthlyReturn = assets.Sum(a => (decimal)a.ValorInvestido * (decimal)a.TaxaPercentagem) / totalValue;
+        }
+
+        alerts = 0;
+    }
+
+    private bool ValidateAuthentication()
+    {
+        try
+        {
+            if (UserStateService == null)
+            {
+                Console.WriteLine("❌ UserStateService é null");
+                return false;
+            }
+
+            if (UserStateService.UserId == Guid.Empty)
+            {
+                Console.WriteLine("❌ UserId está vazio");
+                return false;
+            }
+
+            Console.WriteLine($"✅ Usuário autenticado com ID: {UserStateService.UserId}");
+            isAuthenticated = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro na validação de autenticação: {ex.Message}");
+            return false;
+        }
+    }
+
+    private void RedirectToLogin()
+    {
+        try
+        {
+            Console.WriteLine("🔄 Redirecionando para login...");
+            isAuthenticated = false;
+            NavigationManager.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao redirecionar para login: {ex.Message}");
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private async Task<bool> LoadUserDataSafely()
+    {
+        try
+        {
+            Console.WriteLine($"🔄 Fazendo requisição para API: /api/Utilizadore/{UserStateService.UserId}");
+
+            var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+
+            Console.WriteLine($"📡 Resposta da API: {response.StatusCode}");
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Console.WriteLine("❌ API retornou 401 - Token inválido ou expirado");
+                return false;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ API retornou erro: {response.StatusCode} - {response.ReasonPhrase}");
+                return false;
+            }
+
+            var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+            if (user != null)
+            {
+                userName = user.Nome ?? "Utilizador";
+                userRole = user.Cargo ?? "Utilizador";
+                Console.WriteLine($"✅ Dados do usuário carregados: Nome={userName}, Cargo={userRole}");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine("❌ Resposta da API não contém dados do usuário");
+                return false;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"❌ Erro de rede ao carregar dados do usuário: {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro inesperado ao carregar dados do usuário: {ex.Message}");
+            return false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Console.WriteLine("🔄 Iniciando carregamento da página portfolio...");
+
+            if (!ValidateAuthentication())
+            {
+                Console.WriteLine("❌ Falha na validação de autenticação");
+                isLoading = false;
+                return;
+            }
+
+            Console.WriteLine("✅ Usuário autenticado, carregando dados...");
+
+            var userDataLoaded = await LoadUserDataSafely();
+
+            if (!userDataLoaded)
+            {
+                Console.WriteLine("❌ Falha ao carregar dados do usuário, redirecionando para login");
+                RedirectToLogin();
+                return;
+            }
+
+            Console.WriteLine($"✅ Dados do usuário carregados: {userName}, Cargo: {userRole}");
+
+            if (userRole == "Administrador")
+            {
+                Console.WriteLine("🔄 Administrador detectado, redirecionando para relatórios...");
+                NavigationManager.NavigateTo("/reports", forceLoad: true);
+                return;
+            }
+
+            await LoadPortfolioData();
+            CalculateSummaryStatistics();
+            filteredAssets = new List<AtivoFinanceiroDto>(assets);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro durante inicialização: {ex.Message}");
+            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowAddAssetModal()
+    {
+        tempDataAquisicao = DateTime.Now;
+        newAsset = new AtivoFinanceiroDto
+        {
+            UtilizadorId = UserStateService.UserId,
+            DataAquisicao = DateOnly.FromDateTime(tempDataAquisicao),
+            ValorInvestido = 0,
+            TaxaPercentagem = 0
+        };
+        depositoDetails = new DepositoDto();
+        fundoDetails = new FundoInvestimentoDto();
+        imovelDetails = new ImovelArrendamentoDto
+        {
+            Designacao = "",
+            Morada = "",
+            ValorRenda = 0,
+            TaxaCondominio = 0,
+            DespesasAnuais = 0,
+            PercentagemPropriedade = 100
+        };
+        showAddAssetModal = true;
+        ClearError();
+        ClearSuccess();
+    }
+
+    private void OnDateChanged()
+    {
+        newAsset.DataAquisicao = DateOnly.FromDateTime(tempDataAquisicao);
+    }
+
+    private void OnAssetTypeChange()
+    {
+        StateHasChanged();
+    }
+
     private void ToggleUserMenu()
     {
         showUserMenu = !showUserMenu;
     }
-    
+
     private void Logout()
     {
-        // In a real app, implement logout logic
-        NavigationManager.NavigateTo("/login");
+        try
+        {
+            UserStateService.UserId = Guid.Empty;
+            isAuthenticated = false;
+            NavigationManager.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro durante logout: {ex.Message}");
+            NavigationManager.NavigateTo("/");
+        }
     }
-    
+
     private void SearchAssets()
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            // Reset to all assets if search is cleared
-            filteredAssets = new List<FinancialAsset>(assets);
+            filteredAssets = new List<AtivoFinanceiroDto>(assets ?? new List<AtivoFinanceiroDto>());
         }
         else
         {
-            // Filter assets by name (case-insensitive)
-            filteredAssets = assets.Where(a => 
-                a.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                (a.Type == "Deposito" && a.Bank != null && a.Bank.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-                (a.Type == "Fundo" && a.Manager != null && a.Manager.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
-                (a.Type == "Imovel" && a.Location != null && a.Location.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-            ).ToList();
+            filteredAssets = (assets ?? new List<AtivoFinanceiroDto>())
+                .Where(
+                    a => GetAssetDisplayName(a).Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                         a.TipoAtivo.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                ).ToList();
         }
-        
-        // Apply additional filters if set
+
         ApplyFilters();
     }
-    
+
     private void FilterByType()
     {
-        // Reset to all assets first
-        filteredAssets = new List<FinancialAsset>(assets);
-        
-        // Apply search filter
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            SearchAssets();
-        }
-        
-        // Apply type filter
-        if (!string.IsNullOrWhiteSpace(selectedType))
-        {
-            filteredAssets = filteredAssets.Where(a => a.Type == selectedType).ToList();
-        }
-        
-        // Apply value filter if applicable
-        if (minValue > 0 && (selectedType == "Deposito" || selectedType == "Fundo"))
-        {
-            filteredAssets = filteredAssets.Where(a => a.Value >= minValue).ToList();
-        }
+        ApplyFilters();
     }
-    
-    private void FilterByValue()
-    {
-        // Only apply value filter if type is Deposit or Fund
-        if (selectedType == "Deposito" || selectedType == "Fundo")
-        {
-            // Apply all filters
-            FilterByType();
-        }
-    }
-    
+
     private void ApplyFilters()
     {
-        // Apply type filter
-        if (!string.IsNullOrWhiteSpace(selectedType))
+        var filtered = assets ?? new List<AtivoFinanceiroDto>();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            filteredAssets = filteredAssets.Where(a => a.Type == selectedType).ToList();
+            filtered = filtered.Where(
+                a => GetAssetDisplayName(a).Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                     a.TipoAtivo.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
         }
-        
-        // Apply value filter if applicable
-        if (minValue > 0 && (selectedType == "Deposito" || selectedType == "Fundo"))
+
+        if (!string.IsNullOrEmpty(selectedType))
         {
-            filteredAssets = filteredAssets.Where(a => a.Value >= minValue).ToList();
+            filtered = filtered.Where(a => a.TipoAtivo == selectedType).ToList();
         }
+
+        filteredAssets = filtered;
+        StateHasChanged();
     }
-    
-    private void ShowAddModal()
+
+    private string GetAssetDisplayName(AtivoFinanceiroDto asset)
     {
-        editingAssetId = 0;
-        selectedAssetType = "Deposito";
-        newAsset = new FinancialAsset 
-        { 
-            Type = selectedAssetType,
-            AcquisitionDate = DateTime.Now
-        };
-        ClearMonthlyRates();
-        showAddModal = true;
-    }
-    
-    private void ClearMonthlyRates()
-    {
-        for (int i = 0; i < 12; i++)
+        return asset.TipoAtivo switch
         {
-            monthlyRates[i] = 0;
-        }
-    }
-    
-    private void EditAsset(int id)
-    {
-        // Find the asset to edit
-        var asset = assets.FirstOrDefault(a => a.Id == id);
-        if (asset != null)
-        {
-            editingAssetId = id;
-            selectedAssetType = asset.Type;
-            
-            // Create a clone of the asset for editing
-            newAsset = new FinancialAsset
-            {
-                Id = asset.Id,
-                Name = asset.Name,
-                Type = asset.Type,
-                Value = asset.Value,
-                Return = asset.Return,
-                Bank = asset.Bank,
-                AccountNumber = asset.AccountNumber,
-                Holders = asset.Holders,
-                InterestRate = asset.InterestRate,
-                AcquisitionDate = asset.AcquisitionDate,
-                MaturityDate = asset.MaturityDate,
-                Manager = asset.Manager,
-                DefaultInterestRate = asset.DefaultInterestRate,
-                RiskLevel = asset.RiskLevel,
-                RedemptionPeriod = asset.RedemptionPeriod,
-                Description = asset.Description,
-                Location = asset.Location,
-                PropertyValue = asset.PropertyValue,
-                MonthlyRent = asset.MonthlyRent,
-                MonthlyCondo = asset.MonthlyCondo,
-                AnnualExpenses = asset.AnnualExpenses
-            };
-            
-            // Set monthly rates if applicable
-            if (asset.Type == "Fundo" && asset.MonthlyRates != null)
-            {
-                for (int i = 0; i < 12; i++)
-                {
-                    if (i < asset.MonthlyRates.Count)
-                    {
-                        monthlyRates[i] = asset.MonthlyRates[i];
-                    }
-                    else
-                    {
-                        monthlyRates[i] = asset.DefaultInterestRate;
-                    }
-                }
-            }
-            else
-            {
-                ClearMonthlyRates();
-            }
-            
-            showAddModal = true;
-        }
-    }
-    
-    private void ViewAssetDetails(int id)
-    {
-        selectedAsset = assets.FirstOrDefault(a => a.Id == id);
-        if (selectedAsset != null)
-        {
-            showViewModal = true;
-        }
-    }
-    
-    private void DeleteAsset(int id)
-    {
-        assetToDelete = assets.FirstOrDefault(a => a.Id == id);
-        if (assetToDelete != null)
-        {
-            showDeleteModal = true;
-        }
-    }
-    
-    private void ConfirmDeleteAsset()
-    {
-        if (assetToDelete != null)
-        {
-            // Remove the asset
-            assets.Remove(assetToDelete);
-            
-            // Update filtered assets
-            filteredAssets.Remove(assetToDelete);
-            
-            // Recalculate summary statistics
-            CalculateSummaryStatistics();
-            
-            // Close modal
-            CloseModal();
-        }
-    }
-    
-    private void SaveAsset()
-    {
-        // Ensure asset type is set
-        newAsset.Type = selectedAssetType;
-        
-        if (selectedAssetType == "Fundo")
-        {
-            // Set monthly rates
-            newAsset.MonthlyRates = new List<decimal>(monthlyRates);
-        }
-        
-        // Calculate return based on asset type
-        if (selectedAssetType == "Deposito")
-        {
-            newAsset.Return = newAsset.InterestRate;
-        }
-        else if (selectedAssetType == "Fundo")
-        {
-            newAsset.Return = newAsset.DefaultInterestRate;
-        }
-        else if (selectedAssetType == "Imovel" && newAsset.PropertyValue > 0)
-        {
-            // Calculate annual return rate = (monthly rent * 12) / property value
-            newAsset.Return = Math.Round((newAsset.MonthlyRent * 12) / newAsset.PropertyValue * 100, 2);
-        }
-        
-        if (editingAssetId == 0)
-        {
-            // Add new asset
-            newAsset.Id = assets.Count > 0 ? assets.Max(a => a.Id) + 1 : 1;
-            assets.Add(newAsset);
-        }
-        else
-        {
-            // Update existing asset
-            var index = assets.FindIndex(a => a.Id == editingAssetId);
-            if (index >= 0)
-            {
-                assets[index] = newAsset;
-            }
-        }
-        
-        // Recalculate summary statistics
-        CalculateSummaryStatistics();
-        
-        // Refresh filtered assets
-        SearchAssets();
-        
-        // Close modal
-        CloseModal();
-    }
-    
-    private void CloseModal()
-    {
-        showAddModal = false;
-        showViewModal = false;
-        showDeleteModal = false;
-        editingAssetId = 0;
-    }
-    
-    private string GetAssetTypeName(string type)
-    {
-        return type switch
-        {
-            "Deposito" => "Depósito a Prazo",
-            "Fundo" => "Fundo de Investimento",
-            "Imovel" => "Imóvel Arrendado",
-            _ => type
+            "DepositoAPrazo" => $"Depósito {asset.AtivoId}",
+            "FundoInvestimento" => $"Fundo {asset.AtivoId}",
+            "ImovelArrendamento" => $"Imóvel {asset.AtivoId}",
+            "ImovelArrendado" => $"Imóvel {asset.AtivoId}",
+            _ => $"Ativo {asset.AtivoId}"
         };
     }
-    
+
+    private string GetAssetTypeName(string tipoAtivo)
+    {
+        return tipoAtivo switch
+        {
+            "DepositoAPrazo" => "Depósito a Prazo",
+            "FundoInvestimento" => "Fundo de Investimento",
+            "ImovelArrendamento" => "Imóvel Arrendado",
+            "ImovelArrendado" => "Imóvel Arrendado",
+            _ => tipoAtivo
+        };
+    }
+
     private string FormatCurrency(decimal value)
     {
-        return value.ToString("N2", CultureInfo.GetCultureInfo("pt-PT")) + " €";
+        return value.ToString("C", new CultureInfo("pt-PT"));
     }
-    
+
     private string FormatPercentage(decimal value)
     {
-        return "+" + value.ToString("0.0", CultureInfo.GetCultureInfo("pt-PT")) + "%";
+        return $"{value:F1}%";
     }
-    
-    // Financial Asset class
-    public class FinancialAsset
+
+    private bool IsFormValid()
     {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public string Type { get; set; } // "Deposito", "Fundo", "Imovel"
-        public decimal Value { get; set; }
-        public decimal Return { get; set; } // Annual return rate as percentage
-        public DateTime AcquisitionDate { get; set; }
-        
-        // Deposit-specific properties
-        public string Bank { get; set; }
-        public string AccountNumber { get; set; }
-        public string Holders { get; set; }
-        public decimal InterestRate { get; set; }
-        public DateTime? MaturityDate { get; set; }
-        
-        // Fund-specific properties
-        public string Manager { get; set; }
-        public decimal DefaultInterestRate { get; set; }
-        public string RiskLevel { get; set; }
-        public int RedemptionPeriod { get; set; }
-        public List<decimal> MonthlyRates { get; set; }
-        
-        // Property-specific properties
-        public string Description { get; set; }
-        public string Location { get; set; }
-        public decimal PropertyValue { get; set; }
-        public decimal MonthlyRent { get; set; }
-        public decimal MonthlyCondo { get; set; }
-        public decimal AnnualExpenses { get; set; }
+        if (string.IsNullOrEmpty(newAsset.TipoAtivo)) return false;
+        if (newAsset.ValorInvestido <= 0) return false;
+        if (newAsset.TaxaPercentagem < 0) return false;
+
+        switch (newAsset.TipoAtivo)
+        {
+            case "DepositoAPrazo":
+                return true;
+            case "FundoInvestimento":
+                return !string.IsNullOrWhiteSpace(fundoDetails.Nome);
+            case "ImovelArrendamento":
+                return !string.IsNullOrWhiteSpace(imovelDetails.Designacao) &&
+                       imovelDetails.ValorRenda > 0;
+            default:
+                return false;
+        }
+    }
+
+    // DTO Classes for Create operations
+    public class AtivosFinanceirosCreateDto
+    {
+        public Guid Id { get; set; }
+        public string Tipo { get; set; } = "";
+        public DateOnly DataInicio { get; set; }
+        public double TaxaPercentagem { get; set; }
+    }
+
+    public class CarteiraCreateDto
+    {
+        public Guid Id { get; set; }
+        public Guid UtilizadorId { get; set; }
+        public Guid AtivoId { get; set; }
+        public DateOnly DataInicio { get; set; }
+        public double Montante { get; set; }
+    }
+
+    public class DepositoCreateDto
+    {
+        public Guid Id { get; set; }
+        public Guid AtivoId { get; set; }
+        public double Montante { get; set; }
+        public string Banco { get; set; } = "";
+        public string NumeroConta { get; set; } = "";
+        public double TaxaJuros { get; set; }
+        public List<string> Titulares { get; set; } = new List<string>();
+    }
+
+    public class FundoInvestimentoCreateDto
+    {
+        public Guid Id { get; set; }
+        public Guid AtivoId { get; set; }
+        public string Nome { get; set; } = "";
+        public double MontanteInvestido { get; set; }
+        public int DuracaoMeses { get; set; }
+        public double TaxaJurosPadrao { get; set; }
+    }
+
+    public class ImovelArrendamentoCreateDto
+    {
+        public Guid Id { get; set; }
+        public Guid AtivoId { get; set; }
+        public string Designacao { get; set; } = "";
+        public Guid? LocalizacaoId { get; set; }
+        public double ValorPropriedade { get; set; }
+        public double ValorRenda { get; set; }
+        public double TaxaCondominio { get; set; }
+        public double DespesasAnuais { get; set; }
+        public double PercentagemPropriedade { get; set; }
+    }
+
+    // DTO Classes for Display
+    public class UtilizadoreDto
+    {
+        public Guid Id { get; set; }
+        public string Nome { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Cargo { get; set; } = "";
+    }
+
+    public class CarteiraDto
+    {
+        public Guid Id { get; set; }
+        public Guid? UtilizadorId { get; set; }
+        public Guid? AtivoId { get; set; }
+
+        [JsonConverter(typeof(DateOnlyJsonConverter))]
+        public DateOnly DataInicio { get; set; }
+        public double Montante { get; set; }
+    }
+
+    public class DepositoDto
+    {
+        public string id { get; set; } = string.Empty;
+        public string tipo { get; set; } = string.Empty;
+        public DateTime dataInicio { get; set; }
+        public double taxaPercentagem { get; set; }
+        public double Montante { get; set; }
+        public string Banco { get; set; } = string.Empty;
+        public string NumeroConta { get; set; } = string.Empty;
+        public double TaxaJuros { get; set; }
+        public List<string> Titulares { get; set; } = new List<string>();
+    }
+
+    public class FundoInvestimentoDto
+    {
+        public string id { get; set; } = string.Empty;
+        public string tipo { get; set; } = string.Empty;
+        public DateTime dataInicio { get; set; }
+        public double taxaPercentagem { get; set; }
+        public string Nome { get; set; } = string.Empty;
+        public double MontanteInvestido { get; set; }
+        public int DuracaoMeses { get; set; }
+        public double TaxaJurosPadrao { get; set; }
+    }
+
+    public class ImovelArrendamentoDto
+    {
+        public string id { get; set; } = string.Empty;
+        public string tipo { get; set; } = string.Empty;
+        public DateTime dataInicio { get; set; }
+        public double taxaPercentagem { get; set; }
+        public string Designacao { get; set; } = string.Empty;
+        public double ValorPropriedade { get; set; }
+        public double ValorRenda { get; set; }
+        public double TaxaCondominio { get; set; }
+        public double DespesasAnuais { get; set; }
+        public double PercentagemPropriedade { get; set; }
+        public string? Morada { get; set; } = string.Empty;
+    }
+
+    public class AtivoFinanceiroDto
+    {
+        public string id { get; set; } = string.Empty;
+        public Guid UtilizadorId { get; set; }
+        public string AtivoId { get; set; } = string.Empty;
+        public string TipoAtivo { get; set; } = string.Empty;
+        public DateOnly DataAquisicao { get; set; }
+        public double ValorInvestido { get; set; }
+        public double TaxaPercentagem { get; set; }
+    }
+
+    public class DateOnlyJsonConverter : JsonConverter<DateOnly>
+    {
+        private const string DateFormat = "yyyy-MM-dd";
+
+        public override DateOnly Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var stringValue = reader.GetString();
+                if (DateTime.TryParse(stringValue, out var dateTime))
+                {
+                    return DateOnly.FromDateTime(dateTime);
+                }
+            }
+            else if (reader.TokenType == JsonTokenType.StartObject)
+            {
+                var jsonDoc = JsonDocument.ParseValue(ref reader);
+                if (jsonDoc.RootElement.TryGetProperty("year", out var yearElement) &&
+                    jsonDoc.RootElement.TryGetProperty("month", out var monthElement) &&
+                    jsonDoc.RootElement.TryGetProperty("day", out var dayElement))
+                {
+                    return new DateOnly(yearElement.GetInt32(), monthElement.GetInt32(), dayElement.GetInt32());
+                }
+            }
+
+            throw new JsonException($"Unable to convert JSON to DateOnly. Token type: {reader.TokenType}");
+        }
+
+        public override void Write(Utf8JsonWriter writer, DateOnly value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString(DateFormat));
+        }
     }
 }

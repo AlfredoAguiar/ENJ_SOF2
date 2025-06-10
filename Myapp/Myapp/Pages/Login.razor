@@ -2,6 +2,7 @@
 @page "/"
 @using System.ComponentModel.DataAnnotations
 @using System.Net
+@using System.Text.Json
 @using Microsoft.JSInterop
 @using WebApplication5.DTO
 @inject NavigationManager NavigationManager
@@ -69,6 +70,69 @@
     </div>
 </div>
 
+<style>
+    /* Mensagens de Alerta - Sucesso e Erro */
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: 1px solid #b8dabc;
+        border-left: 4px solid #28a745;
+        color: #155724;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+        display: flex;
+        align-items: center;
+    }
+
+    .alert-error {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border: 1px solid #f1b0b7;
+        border-left: 4px solid #dc3545;
+        color: #721c24;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
+        display: flex;
+        align-items: center;
+    }
+
+    .alert-icon {
+        font-size: 18px;
+        font-weight: bold;
+        margin-right: 12px;
+        min-width: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .alert-success .alert-icon {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border: 2px solid rgba(40, 167, 69, 0.2);
+    }
+
+    .alert-error .alert-icon {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 2px solid rgba(220, 53, 69, 0.2);
+    }
+
+    .alert-success span:not(.alert-icon),
+    .alert-error span:not(.alert-icon) {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 1.4;
+        flex: 1;
+    }
+</style>
+
 @code {
     private LoginModel loginModel = new LoginModel();
     private string errorMessage = string.Empty;
@@ -84,14 +148,12 @@
 
         try
         {
-            // Validação básica antes de enviar
             if (string.IsNullOrWhiteSpace(loginModel.Email) || string.IsNullOrWhiteSpace(loginModel.Password))
             {
                 errorMessage = "Email e senha são obrigatórios.";
                 return;
             }
 
-            // Criar o objeto de login request conforme esperado pela API
             var loginRequest = new LoginRequest
             {
                 Email = loginModel.Email.Trim().ToLowerInvariant(),
@@ -104,35 +166,24 @@
 
             if (response.IsSuccessStatusCode)
             {
-                var user = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
 
-                if (user != null && user.Id != Guid.Empty)
+                if (user != null)
                 {
-                    // Salve o token para usar em chamadas autenticadas, por exemplo:
-                    await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", user.Token);
-
-                    // Você também pode salvar o token no serviço de estado, se desejar
+                    Console.WriteLine($"Dados completos do usuário: {JsonSerializer.Serialize(user)}");
 
                     UserStateService.UserId = user.Id;
-                    
-
-                    Console.WriteLine($"Login bem-sucedido para usuário: {user.Nome} (ID: {user.Id}, Cargo: {user.Cargo})");
-
                     string redirectUrl = DetermineRedirectUrl(user.Cargo);
-
                     successMessage = $"Login realizado com sucesso! Redirecionando para {GetUserTypeDescription(user.Cargo)}...";
+
                     StateHasChanged();
-
                     loginModel = new LoginModel();
-
                     await Task.Delay(2000);
                     NavigationManager.NavigateTo(redirectUrl);
                 }
-
                 else
                 {
                     errorMessage = "Erro ao processar dados do usuário.";
-                    Console.WriteLine("Resposta da API não contém dados válidos do usuário");
                 }
             }
             else
@@ -150,19 +201,10 @@
                 };
             }
         }
-        catch (HttpRequestException httpEx)
-        {
-            errorMessage = "Erro de conexão com o servidor. Verifique se a API está rodando.";
-            Console.WriteLine($"Erro HTTP: {httpEx.Message}");
-        }
-        catch (TaskCanceledException)
-        {
-            errorMessage = "A requisição demorou muito tempo. Tente novamente.";
-        }
         catch (Exception ex)
         {
             errorMessage = "Erro inesperado. Tente novamente.";
-            Console.WriteLine($"Erro inesperado: {ex.Message}");
+            Console.WriteLine($"Erro: {ex.Message}");
         }
         finally
         {
@@ -173,22 +215,26 @@
 
     private string DetermineRedirectUrl(string cargo)
     {
-        return cargo switch
+        var normalizedCargo = cargo?.Trim().ToLowerInvariant() ?? string.Empty;
+        Console.WriteLine($"Cargo normalizado: {normalizedCargo}");
+
+        return normalizedCargo switch
         {
-            "Utilizador" => "main",
-            "GestorUtilizadores" => "/main2",
-            "Administrador" => "/main3",
-            _ => "main" // Default para utilizador se cargo não for reconhecido
+            "utilizador" => "/main",
+            "gestorutilizadores" => "/main",
+            "administrador" => "/reports",
+            _ => "/nao leu"
         };
     }
 
     private string GetUserTypeDescription(string cargo)
     {
-        return cargo switch
+        var normalizedCargo = cargo?.Trim().ToLowerInvariant() ?? string.Empty;
+        return normalizedCargo switch
         {
-            "Utilizador" => "dashboard do utilizador",
-            "GestorUtilizadores" => "painel do gestor",
-            "Administrador" => "painel administrativo",
+            "utilizador" => "dashboard do utilizador",
+            "gestorutilizadores" => "dashboard do gestor",
+            "administrador" => "página de relatórios",
             _ => "dashboard"
         };
     }
@@ -205,7 +251,6 @@
         public string Password { get; set; } = string.Empty;
     }
 
-    // Classe para corresponder ao schema LoginRequest da API
     public class LoginRequest
     {
         public string Email { get; set; } = string.Empty;

@@ -2,18 +2,52 @@
 @attribute [Authorize]
 @using System.Net
 @using System.Globalization
+@using System.Text
+@using System.Text.Json
 @using WebApplication5.DTO
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
 @inject UserStateService UserStateService
+@inject IJSRuntime JSRuntime
 
+@if (isLoading)
+{
+<div class="loading-container">
+    <div class="loading-spinner">
+        <p>Carregando transações...</p>
+    </div>
+</div>
+}
+else
+{
 <div class="app-container">
+    @if (userRole != "Administrador") // Sidebar only for non-Administrators
+    {
     <!-- Sidebar Navigation -->
     <div class="sidebar">
         <div class="sidebar-header">
             <h2>Gestão Ativos</h2>
         </div>
         <nav class="sidebar-nav">
+            @if (userRole == "Utilizador")
+            {
+            <!-- Regular Users: Dashboard, Portfolio, Transactions -->
+            <a href="/main" class="nav-item">
+                <div class="nav-icon dashboard-nav-icon"></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/portfolio" class="nav-item">
+                <div class="nav-icon portfolio-nav-icon"></div>
+                <span>Carteira</span>
+            </a>
+            <a href="/transactions" class="nav-item active">
+                <div class="nav-icon transactions-nav-icon"></div>
+                <span>Transações</span>
+            </a>
+            }
+            else if (userRole == "GestorUtilizadores") // GestorUtilizadores can see Reports
+            {
+            <!-- Asset Managers: Dashboard, Portfolio, Transactions, Reports -->
             <a href="/main" class="nav-item">
                 <div class="nav-icon dashboard-nav-icon"></div>
                 <span>Dashboard</span>
@@ -30,27 +64,20 @@
                 <div class="nav-icon reports-nav-icon"></div>
                 <span>Relatórios</span>
             </a>
+            }
         </nav>
         <div class="sidebar-footer">
             <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
-                <div class="nav-icon logout-icon"></div>
+                <div class="nav-icon logout-nav-icon"></div>
                 <span>Sair</span>
             </a>
         </div>
     </div>
+    }
 
     <!-- Main Content -->
     <div class="main-content">
-        @if (isLoading)
-        {
-            <div class="loading-container">
-                <div class="loading-spinner">
-                    <p>Carregando transações...</p>
-                </div>
-            </div>
-        }
-        else
-        {
+        <div class="container">
             <!-- Top Header -->
             <header class="dashboard-header">
                 <div class="dashboard-title">
@@ -59,16 +86,14 @@
                 </div>
                 <div class="user-profile">
                     <span class="user-greeting">Olá, <strong>@userName</strong></span>
-                    <button class="user-menu-button" @onclick="ToggleUserMenu">
-                        <div class="avatar">@userInitials</div>
-                        @if (showUserMenu)
-                        {
-                            <div class="user-menu">
-                                <a href="/profile" class="user-menu-item">Meu Perfil</a>
-                                <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
-                            </div>
-                        }
-                    </button>
+                    <div class="user-avatar" @onclick="ToggleUserMenu">@userInitials</div>
+                    @if (showUserMenu)
+                    {
+                    <div class="user-menu">
+                        <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                        <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                    </div>
+                    }
                 </div>
             </header>
 
@@ -97,15 +122,8 @@
                             <p>Fluxo Líquido</p>
                         </div>
                     </div>
-                    <div class="summary-card">
-                        <div class="card-icon yellow-icon">#</div>
-                        <div class="card-content">
-                            <h3>@pendingTransactions</h3>
-                            <p>Transações Pendentes</p>
-                        </div>
-                    </div>
                 </div>
-                
+
                 <!-- Date Filter -->
                 <div class="date-filters">
                     <div class="date-range">
@@ -122,673 +140,1333 @@
                     <div class="filter-controls">
                         <select @bind="selectedType" @bind:after="ApplyFilters">
                             <option value="">Todos os Tipos</option>
-                            <option value="Receita">Receitas</option>
-                            <option value="Despesa">Despesas</option>
-                            <option value="Investimento">Investimentos</option>
-                        </select>
-
-                        <select @bind="selectedStatus" @bind:after="ApplyFilters">
-                            <option value="">Todos os Status</option>
-                            <option value="Concluída">Concluídas</option>
-                            <option value="Pendente">Pendentes</option>
-                            <option value="Cancelada">Canceladas</option>
+                            @foreach (var type in availableAssetTypes)
+                            {
+                            <option value="@type">@type</option>
+                            }
                         </select>
                     </div>
-
-                    <button class="add-button" @onclick="ShowAddModal">+ Nova Transação</button>
                 </div>
 
                 <!-- Transactions List -->
                 <div id="tx_header_section">
                     <h2 id="tx_main_title">Transações Recentes</h2>
-                    <button id="tx_export_btn" @onclick="ExportTransactions">Exportar</button>
+                    <div class="header-buttons">
+                        <button id="tx_export_all_btn" @onclick="() => ExportUserAssetsReport(true)" disabled="@isExporting">
+                            @if (isExporting)
+                            {
+                            <span>Exportando...</span>
+                            }
+                            else
+                            {
+                            <span>Exportar Todos os Ativos CSV</span>
+                            }
+                        </button>
+                        <button id="tx_export_by_date_btn" @onclick="() => ExportUserAssetsReport(false)" disabled="@isExporting">
+                            @if (isExporting)
+                            {
+                            <span>Exportando...</span>
+                            }
+                            else
+                            {
+                            <span>Exportar Ativos por Data CSV</span>
+                            }
+                        </button>
+                    </div>
                 </div>
 
                 <div id="tx_table_wrapper">
                     <table id="tx_data_table">
                         <thead>
-                            <tr>
-                                <th class="tx_col_date">Data</th>
-                                <th class="tx_col_desc">Descrição</th>
-                                <th class="tx_col_cat">Categoria</th>
-                                <th class="tx_col_asset">Ativo</th>
-                                <th class="tx_col_value">Valor</th>
-                                <th class="tx_col_status">Status</th>
-                                <th class="tx_col_actions">Ações</th>
-                            </tr>
+                        <tr>
+                            <th class="tx_col_date">Data</th>
+                            <th class="tx_col_desc">Descrição</th>
+                            <th class="tx_col_cat">Categoria</th>
+                            <th class="tx_col_asset">Ativo</th>
+                            <th class="tx_col_value">Valor</th>
+                            <th class="tx_col_actions">Ações</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            @if (filteredTransactions.Count == 0)
-                            {
-                                <tr>
-                                    <td colspan="7" class="no-transactions-message">
-                                        Nenhuma transação encontrada com os filtros atuais.
-                                    </td>
-                                </tr>
-                            }
-                            else
-                            {
-                                @foreach (var transaction in filteredTransactions)
-                                {
-                                    <tr class="tx_table_row">
-                                        <td class="tx_date">@transaction.Date.ToString("dd/MM/yyyy")</td>
-                                        <td class="tx_desc">@transaction.Description</td>
-                                        <td class="tx_cat">@transaction.Category</td>
-                                        <td class="tx_asset">@transaction.Asset</td>
-                                        <td class="tx_value @(transaction.Amount > 0 ? "tx_positive" : "tx_negative")">
-                                            @FormatCurrency(transaction.Amount)
-                                        </td>
-                                        <td class="tx_status">
-                                            <span class="tx_status_badge tx_@transaction.Status.ToLower()">@transaction.Status</span>
-                                        </td>
-                                        <td class="tx_actions">
-                                            <button class="tx_btn tx_view" @onclick="() => ViewTransactionDetails(transaction.Id)">
-                                                <i class="tx_icon_view"></i>
-                                            </button>
-                                            <button class="tx_btn tx_edit" @onclick="() => EditTransaction(transaction.Id)">
-                                                <i class="tx_icon_edit"></i>
-                                            </button>
-                                            <button class="tx_btn tx_delete" @onclick="() => DeleteTransaction(transaction.Id)">
-                                                <i class="tx_icon_delete"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
-                            }
+                        @if (filteredTransactions.Count == 0)
+                        {
+                        <tr>
+                            <td colspan="6" class="no-transactions-message">
+                                Nenhuma transação encontrada com os filtros atuais.
+                            </td>
+                        </tr>
+                        }
+                        else
+                        {
+                        @foreach (var transaction in filteredTransactions)
+                        {
+                        <tr class="tx_table_row">
+                            <td class="tx_date">@transaction.Date.ToString("dd/MM/yyyy")</td>
+                            <td class="tx_desc">@transaction.Description</td>
+                            <td class="tx_cat">@transaction.Category</td>
+                            <td class="tx_asset">@transaction.Asset</td>
+                            <td class="tx_value @(transaction.Amount > 0 ? "tx_positive" : "tx_negative")">
+                                @FormatCurrency(transaction.Amount)
+                            </td>
+                            <td class="tx_actions">
+                                <button class="tx_btn tx_view" @onclick="() => ViewTransactionDetails(transaction.Id)">
+                                    <i class="tx_icon_view"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        }
+                        }
                         </tbody>
                     </table>
                 </div>
             </div>
-        }
+        </div>
     </div>
 </div>
 
-<!-- Add Transaction Modal -->
-@if (showAddModal)
+<!-- Transaction Details Modal -->
+@if (showDetailsModal)
 {
-    <div class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>@(editingTransactionId == 0 ? "Nova Transação" : "Editar Transação")</h2>
-                <button class="close-button" @onclick="CloseModal">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-tabs">
-                    <button class="tab-button @(selectedTransactionType == "Receita" ? "active" : "")" 
-                            @onclick="@(() => selectedTransactionType = "Receita")">Receita</button>
-                    <button class="tab-button @(selectedTransactionType == "Despesa" ? "active" : "")" 
-                            @onclick="@(() => selectedTransactionType = "Despesa")">Despesa</button>
-                    <button class="tab-button @(selectedTransactionType == "Investimento" ? "active" : "")" 
-                            @onclick="@(() => selectedTransactionType = "Investimento")">Investimento</button>
-                </div>
-                
-                <!-- Common Fields for All Transaction Types -->
-                <div class="form-group">
-                    <label>Descrição</label>
-                    <input type="text" @bind="newTransaction.Description" required />
-                </div>
-                
-                <div class="form-group">
-                    <label>Data</label>
-                    <input type="date" @bind="newTransaction.Date" @bind:format="yyyy-MM-dd" required />
-                </div>
-                
-                <div class="form-group">
-                    <label>Valor</label>
-                    <input type="number" step="0.01" @bind="newTransaction.Amount" required />
-                </div>
-                
-                <div class="form-group">
-                    <label>Conta/Ativo</label>
-                    <select @bind="newTransaction.Asset">
-                        @foreach (var asset in availableAssets)
-                        {
-                            <option value="@asset">@asset</option>
-                        }
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Categoria</label>
-                    @if (selectedTransactionType == "Receita")
-                    {
-                        <select @bind="newTransaction.Category">
-                            <option value="Salário">Salário</option>
-                            <option value="Rendimentos">Rendimentos</option>
-                            <option value="Rendas">Rendas</option>
-                            <option value="Dividendos">Dividendos</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                    }
-                    else if (selectedTransactionType == "Despesa")
-                    {
-                        <select @bind="newTransaction.Category">
-                            <option value="Alimentação">Alimentação</option>
-                            <option value="Habitação">Habitação</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Lazer">Lazer</option>
-                            <option value="Saúde">Saúde</option>
-                            <option value="Educação">Educação</option>
-                            <option value="Manutenção">Manutenção</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                    }
-                    else
-                    {
-                        <select @bind="newTransaction.Category">
-                            <option value="Depósito a Prazo">Depósito a Prazo</option>
-                            <option value="Fundo de Investimento">Fundo de Investimento</option>
-                            <option value="Imóvel">Imóvel</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                    }
-                </div>
-                
-                <div class="form-group">
-                    <label>Status</label>
-                    <select @bind="newTransaction.Status">
-                        <option value="Concluída">Concluída</option>
-                        <option value="Pendente">Pendente</option>
-                        <option value="Cancelada">Cancelada</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Notas</label>
-                    <textarea @bind="newTransaction.Notes"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
-                <button class="save-button" @onclick="SaveTransaction">Salvar</button>
-            </div>
+<div class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Detalhes da Transação</h2>
+            <button class="close-button" @onclick="CloseModal">×</button>
         </div>
-    </div>
-}
+        <div class="modal-body">
+            @if (selectedTransaction != null)
+            {
+            <div class="transaction-details">
+                <div class="detail-group">
+                    <label>Descrição:</label>
+                    <p>@selectedTransaction.Description</p>
+                </div>
 
-<!-- Delete Confirmation Modal -->
-@if (showDeleteModal)
-{
-    <div class="modal-overlay">
-        <div class="modal delete-modal">
-            <div class="modal-header">
-                <h2>Confirmar Exclusão</h2>
-                <button class="close-button" @onclick="CloseModal">×</button>
+                <div class="detail-group">
+                    <label>Data:</label>
+                    <p>@selectedTransaction.Date.ToString("dd/MM/yyyy")</p>
+                </div>
+
+                <div class="detail-group">
+                    <label>Valor:</label>
+                    <p class="@(selectedTransaction.Amount > 0 ? "tx_positive" : "tx_negative")">
+                        @FormatCurrency(selectedTransaction.Amount)
+                    </p>
+                </div>
+
+                <div class="detail-group">
+                    <label>Categoria:</label>
+                    <p>@selectedTransaction.Category</p>
+                </div>
+
+                <div class="detail-group">
+                    <label>Ativo:</label>
+                    <p>@selectedTransaction.Asset</p>
+                </div>
+
+                <div class="detail-group">
+                    <label>Tipo:</label>
+                    <p>@selectedTransaction.Type</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(selectedTransaction.Notes))
+                {
+                <div class="detail-group">
+                    <label>Notas:</label>
+                    <p>@selectedTransaction.Notes</p>
+                </div>
+                }
             </div>
-            <div class="modal-body">
-                <p>Tem certeza que deseja excluir esta transação?</p>
-                <p><strong>@(transactionToDelete?.Description)</strong></p>
-                <p>Esta ação não pode ser desfeita.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="cancel-button" @onclick="CloseModal">Cancelar</button>
-                <button class="delete-button" @onclick="ConfirmDeleteTransaction">Excluir</button>
-            </div>
+            }
+        </div>
+        <div class="modal-footer">
+            <button class="cancel-button" @onclick="CloseModal">Fechar</button>
         </div>
     </div>
+</div>
+}
 }
 
 @code {
-    private bool isLoading = true;
-    private string userName = "Utilizador";
-    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
-    private bool showUserMenu = false;
-    
-    // Summary Statistics
-    private decimal monthlyIncome = 0;
-    private decimal monthlyExpenses = 0;
-    private decimal netFlow = 0;
-    private int pendingTransactions = 0;
-    
-    // Transaction Management
-    private List<Transaction> transactions = new List<Transaction>();
-    private List<Transaction> filteredTransactions = new List<Transaction>();
-    private List<string> availableAssets = new List<string>();
-    private string searchTerm = "";
-    private string selectedType = "";
-    private string selectedStatus = "";
-    private DateTime startDate = DateTime.Now.AddMonths(-1);
-    private DateTime endDate = DateTime.Now;
-    
-    // Modal States
-    private bool showAddModal = false;
-    private bool showDeleteModal = false;
-    private int editingTransactionId = 0;
-    private string selectedTransactionType = "Receita";
-    private Transaction newTransaction = new Transaction();
-    private Transaction transactionToDelete;
-    
-    // Financial Data
-    private List<CarteiraDto> userCarteiras = new List<CarteiraDto>();
-    private List<DepositoDto> depositos = new List<DepositoDto>();
-    private List<FundosInvestimentoDto> fundos = new List<FundosInvestimentoDto>();
-    private List<ImoveisArrendamentoDto> imoveis = new List<ImoveisArrendamentoDto>();
-    
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-        ApplyFilters();
-    }
+private bool isLoading = true;
+private bool isExporting = false;
+private string userName = "Utilizador";
+private string userRole = ""; // Added to manage sidebar visibility
+private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
+private bool showUserMenu = false;
 
-    private async Task LoadData()
-    {
-        try
-        {
-            isLoading = true;
-            StateHasChanged();
+// Summary Statistics
+private decimal monthlyIncome = 0;
+private decimal monthlyExpenses = 0;
+private decimal netFlow = 0;
 
-            // Carregar dados do usuário
-            await LoadUserData();
+// Transaction Management
+private List<Transaction> transactions = new List<Transaction>();
+private List<Transaction> filteredTransactions = new List<Transaction>();
+private string searchTerm = "";
+private string selectedType = "";
+private DateTime startDate = new DateTime(DateTime.Now.Year, 1, 1); // Changed to January 1st of current year
+private DateTime endDate = DateTime.Now;
 
-            // Carregar dados financeiros
-            await LoadFinancialData();
+// Modal States
+private bool showDetailsModal = false;
+private Transaction selectedTransaction;
 
-            // Gerar transações baseadas nos dados reais
-            await GenerateTransactionsFromData();
+// Financial Data (now global to be accessed by GenerateTransactionsFromData)
+private List<CarteiraDto> allCarteiraEntries = new List<CarteiraDto>();
+private List<AtivosFinanceiroDto> allAtivosFinanceiros = new List<AtivosFinanceiroDto>();
+private List<DepositoDto> allDepositos = new List<DepositoDto>();
+private List<FundosInvestimentoDto> allFundos = new List<FundosInvestimentoDto>();
+private List<ImoveisArrendamentoDto> allImoveis = new List<ImoveisArrendamentoDto>();
+private List<LocalizacoDto> allLocalizacoes = new List<LocalizacoDto>();
 
-            // Calcular estatísticas
-            CalculateStatistics();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar dados: {ex.Message}");
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
-    }
+// New property for dynamic asset types
+private List<string> availableAssetTypes = new List<string>();
 
-    private async Task LoadUserData()
-    {
-        try
-        {
-            if (UserStateService.UserId != Guid.Empty)
-            {
-                var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
-                if (response.IsSuccessStatusCode)
-                {
-                    var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
-                    if (user != null)
-                    {
-                        userName = user.Nome ?? "Utilizador";
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar dados do usuário: {ex.Message}");
-        }
-    }
 
-    private async Task LoadFinancialData()
-    {
-        try
-        {
-            // Carregar carteiras do usuário
-            var carteirasResponse = await Http.GetAsync("http://localhost:5189/api/Carteira");
-            if (carteirasResponse.IsSuccessStatusCode)
-            {
-                var allCarteiras = await carteirasResponse.Content.ReadFromJsonAsync<List<CarteiraDto>>();
-                userCarteiras = allCarteiras?.Where(c => c.UtilizadorId == UserStateService.UserId).ToList() ?? new List<CarteiraDto>();
-            }
+protected override async Task OnInitializedAsync()
+{
+Console.WriteLine("[DEBUG] OnInitializedAsync - Iniciando componente");
 
-            // Carregar depósitos
-            var depositosResponse = await Http.GetAsync("http://localhost:5189/api/Deposito");
-            if (depositosResponse.IsSuccessStatusCode)
-            {
-                depositos = await depositosResponse.Content.ReadFromJsonAsync<List<DepositoDto>>() ?? new List<DepositoDto>();
-            }
+// Carregar dados do usuário primeiro para determinar o cargo
+await LoadUserData();
 
-            // Carregar fundos
-            var fundosResponse = await Http.GetAsync("http://localhost:5189/api/FundosInvestimentos");
-            if (fundosResponse.IsSuccessStatusCode)
-            {
-                fundos = await fundosResponse.Content.ReadFromJsonAsync<List<FundosInvestimentoDto>>() ?? new List<FundosInvestimentoDto>();
-            }
-
-            // Carregar imóveis
-            var imoveisResponse = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
-            if (imoveisResponse.IsSuccessStatusCode)
-            {
-                imoveis = await imoveisResponse.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>() ?? new List<ImoveisArrendamentoDto>();
-            }
-
-            // Construir lista de ativos disponíveis
-            BuildAvailableAssets();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao carregar dados financeiros: {ex.Message}");
-        }
-    }
-
-    private void BuildAvailableAssets()
-    {
-        availableAssets.Clear();
-        
-        // Adicionar depósitos
-        foreach (var deposito in depositos)
-        {
-            availableAssets.Add($"Depósito {deposito.Banco}");
-        }
-
-        // Adicionar fundos
-        foreach (var fundo in fundos)
-        {
-            availableAssets.Add(fundo.Nome ?? "Fundo de Investimento");
-        }
-
-        // Adicionar imóveis
-        foreach (var imovel in imoveis)
-        {
-            availableAssets.Add(imovel.Designacao ?? "Imóvel");
-        }
-
-        // Adicionar contas genéricas se não houver ativos
-        if (!availableAssets.Any())
-        {
-            availableAssets.AddRange(new[] { "Conta Corrente", "Conta Poupança", "Carteira" });
-        }
-    }
-
-    private async Task GenerateTransactionsFromData()
-    {
-        transactions.Clear();
-        int transactionId = 1;
-
-        // Gerar transações de investimentos iniciais (carteiras)
-        foreach (var carteira in userCarteiras)
-        {
-            transactions.Add(new Transaction
-            {
-                Id = transactionId++,
-                Description = "Investimento Inicial",
-                Category = "Investimento",
-                Amount = (decimal)carteira.Montante,
-                Date = carteira.DataInicio,
-                Asset = "Carteira de Investimentos",
-                Status = "Concluída",
-                Type = "Investimento",
-                Notes = "Investimento inicial na carteira"
-            });
-        }
-
-        // Gerar transações de rendimentos de depósitos
-        foreach (var deposito in depositos)
-        {
-            var monthlyInterest = (decimal)deposito.Montante * (decimal)deposito.TaxaJuros / 100 / 12;
-            
-            // Gerar rendimentos dos últimos 3 meses
-            for (int i = 1; i <= 3; i++)
-            {
-                transactions.Add(new Transaction
-                {
-                    Id = transactionId++,
-                    Description = $"Juros de Depósito - {deposito.Banco}",
-                    Category = "Rendimentos",
-                    Amount = monthlyInterest,
-                    Date = DateTime.Now.AddMonths(-i).AddDays(Random.Shared.Next(1, 28)),
-                    Asset = $"Depósito {deposito.Banco}",
-                    Status = i == 1 ? "Pendente" : "Concluída",
-                    Type = "Receita",
-                    Notes = $"Rendimento mensal do depósito {deposito.NumeroConta}"
-                });
-            }
-        }
-
-        // Gerar transações de rendas de imóveis
-        foreach (var imovel in imoveis)
-        {
-            // Gerar rendas dos últimos 3 meses
-            for (int i = 1; i <= 3; i++)
-            {
-                transactions.Add(new Transaction
-                {
-                    Id = transactionId++,
-                    Description = $"Renda - {imovel.Designacao}",
-                    Category = "Rendas",
-                    Amount = (decimal)imovel.ValorRenda,
-                    Date = DateTime.Now.AddMonths(-i).AddDays(Random.Shared.Next(1, 5)),
-                    Asset = imovel.Designacao ?? "Imóvel",
-                    Status = i == 1 ? "Pendente" : "Concluída",
-                    Type = "Receita",
-                    Notes = $"Renda mensal do imóvel"
-                });
-
-            // Gerar algumas despesas de manutenção
-            if (Random.Shared.Next(1, 4) == 1) // 25% de chance
-            {
-                transactions.Add(new Transaction
-                {
-                    Id = transactionId++,
-                    Description = $"Manutenção - {imovel.Designacao}",
-                    Category = "Manutenção",
-                    Amount = -(decimal)imovel.TaxaCondominio - Random.Shared.Next(50, 200),
-                    Date = DateTime.Now.AddMonths(-i).AddDays(Random.Shared.Next(10, 25)),
-                    Asset = imovel.Designacao ?? "Imóvel",
-                    Status = "Concluída",
-                    Type = "Despesa",
-                    Notes = "Despesas de manutenção do imóvel"
-                });
-            }
-        }
-        }
-
-        // Gerar algumas transações de exemplo adicionais
-        var sampleTransactions = new[]
-        {
-            new { Desc = "Salário", Cat = "Salário", Amount = 2500m, Type = "Receita" },
-            new { Desc = "Supermercado", Cat = "Alimentação", Amount = -120m, Type = "Despesa" },
-            new { Desc = "Combustível", Cat = "Transporte", Amount = -60m, Type = "Despesa" },
-            new { Desc = "Restaurante", Cat = "Lazer", Amount = -45m, Type = "Despesa" }
-        };
-
-        foreach (var sample in sampleTransactions)
-        {
-            transactions.Add(new Transaction
-            {
-                Id = transactionId++,
-                Description = sample.Desc,
-                Category = sample.Cat,
-                Amount = sample.Amount,
-                Date = DateTime.Now.AddDays(-Random.Shared.Next(1, 30)),
-                Asset = availableAssets.FirstOrDefault() ?? "Conta Corrente",
-                Status = "Concluída",
-                Type = sample.Type,
-                Notes = ""
-            });
-        }
-    }
-
-    private void CalculateStatistics()
-    {
-        var currentMonth = DateTime.Now.Month;
-        var currentYear = DateTime.Now.Year;
-
-        var monthlyTransactions = transactions.Where(t => 
-            t.Date.Month == currentMonth && 
-            t.Date.Year == currentYear).ToList();
-
-        monthlyIncome = monthlyTransactions.Where(t => t.Amount > 0).Sum(t => t.Amount);
-        monthlyExpenses = Math.Abs(monthlyTransactions.Where(t => t.Amount < 0).Sum(t => t.Amount));
-        netFlow = monthlyIncome - monthlyExpenses;
-        pendingTransactions = transactions.Count(t => t.Status == "Pendente");
-    }
-    
-    private void ToggleUserMenu()
-    {
-        showUserMenu = !showUserMenu;
-    }
-    
-    private void Logout()
-    {
-        UserStateService.UserId = Guid.Empty;
-        NavigationManager.NavigateTo("/");
-    }
-    
-    private void ApplyFilters()
-    {
-        filteredTransactions = transactions.Where(t => 
-            (string.IsNullOrWhiteSpace(searchTerm) || 
-             t.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-             t.Category.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-             t.Asset.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
-            (string.IsNullOrWhiteSpace(selectedType) || t.Type == selectedType) &&
-            (string.IsNullOrWhiteSpace(selectedStatus) || t.Status == selectedStatus) &&
-            (t.Date >= startDate && t.Date <= endDate)
-        ).OrderByDescending(t => t.Date).ToList();
-    }
-    
-    private void ShowAddModal()
-    {
-        editingTransactionId = 0;
-        selectedTransactionType = "Receita";
-        newTransaction = new Transaction 
-        { 
-            Type = selectedTransactionType,
-            Date = DateTime.Now,
-            Status = "Pendente",
-            Asset = availableAssets.FirstOrDefault() ?? ""
-        };
-        showAddModal = true;
-    }
-    
-    private void EditTransaction(int id)
-    {
-        var transaction = transactions.FirstOrDefault(t => t.Id == id);
-        if (transaction != null)
-        {
-            editingTransactionId = id;
-            selectedTransactionType = transaction.Type;
-            
-            newTransaction = new Transaction
-            {
-                Id = transaction.Id,
-                Description = transaction.Description,
-                Category = transaction.Category,
-                Amount = Math.Abs(transaction.Amount), // Always show positive for editing
-                Date = transaction.Date,
-                Asset = transaction.Asset,
-                Status = transaction.Status,
-                Type = transaction.Type,
-                Notes = transaction.Notes
-            };
-            
-            showAddModal = true;
-        }
-    }
-    
-    private void ViewTransactionDetails(int id)
-    {
-        EditTransaction(id);
-    }
-    
-    private void DeleteTransaction(int id)
-    {
-        transactionToDelete = transactions.FirstOrDefault(t => t.Id == id);
-        if (transactionToDelete != null)
-        {
-            showDeleteModal = true;
-        }
-    }
-    
-    private void ConfirmDeleteTransaction()
-    {
-        if (transactionToDelete != null)
-        {
-            transactions.Remove(transactionToDelete);
-            ApplyFilters();
-            CalculateStatistics();
-            CloseModal();
-        }
-    }
-    
-    private void SaveTransaction()
-    {
-        newTransaction.Type = selectedTransactionType;
-        
-        // Set amount sign based on transaction type
-        if (selectedTransactionType == "Despesa" && newTransaction.Amount > 0)
-        {
-            newTransaction.Amount = -newTransaction.Amount;
-        }
-        else if ((selectedTransactionType == "Receita" || selectedTransactionType == "Investimento") && newTransaction.Amount < 0)
-        {
-            newTransaction.Amount = Math.Abs(newTransaction.Amount);
-        }
-        
-        if (editingTransactionId == 0)
-        {
-            newTransaction.Id = transactions.Count > 0 ? transactions.Max(t => t.Id) + 1 : 1;
-            transactions.Add(newTransaction);
-        }
-        else
-        {
-            var index = transactions.FindIndex(t => t.Id == editingTransactionId);
-            if (index >= 0)
-            {
-                transactions[index] = newTransaction;
-            }
-        }
-        
-        ApplyFilters();
-        CalculateStatistics();
-        CloseModal();
-    }
-    
-    private void CloseModal()
-    {
-        showAddModal = false;
-        showDeleteModal = false;
-        editingTransactionId = 0;
-    }
-    
-    private void ExportTransactions()
-    {
-        // Em uma implementação real, isso geraria um arquivo CSV/Excel
-        Console.WriteLine("Exportando transações...");
-    }
-    
-    private string FormatCurrency(decimal value)
-    {
-        return value.ToString("N2", CultureInfo.GetCultureInfo("pt-PT")) + " €";
-    }
-    
-    // Transaction class
-    public class Transaction
-    {
-        public int Id { get; set; }
-        public string Description { get; set; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
-        public DateTime Date { get; set; }
-        public string Asset { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty; // "Concluída", "Pendente", "Cancelada"
-        public string Type { get; set; } = string.Empty; // "Receita", "Despesa", "Investimento"
-        public string Notes { get; set; } = string.Empty;
-    }
+// Verificar se o usuário está logado
+if (UserStateService.UserId == Guid.Empty)
+{
+Console.WriteLine("[DEBUG] Usuário não logado, redirecionando para login");
+NavigationManager.NavigateTo("/");
+return;
 }
 
+// Impedir acesso de Administradores a esta página
+if (userRole == "Administrador")
+{
+Console.WriteLine("[DEBUG] Administrador tentando acessar página de transações, redirecionando para /main");
+NavigationManager.NavigateTo("/main", forceLoad: true);
+return;
+}
+
+Console.WriteLine($"[DEBUG] Usuário logado: {UserStateService.UserId}");
+await LoadData();
+ApplyFilters();
+}
+
+private async Task LoadData()
+{
+try
+{
+Console.WriteLine("[DEBUG] LoadData - Iniciando carregamento de dados");
+isLoading = true;
+StateHasChanged();
+
+// LoadUserData already called in OnInitializedAsync
+
+// Carregar todos os dados financeiros (para depois filtrar por utilizador)
+await LoadAllFinancialData();
+
+// Gerar transações baseadas nos dados reais do utilizador logado
+await GenerateTransactionsFromUserData();
+
+// Popular os tipos de ativos disponíveis para o filtro
+availableAssetTypes = allAtivosFinanceiros.Select(a => a.Tipo).Distinct().ToList();
+
+// Calcular estatísticas
+CalculateStatistics();
+
+Console.WriteLine("[DEBUG] LoadData - Carregamento concluído com sucesso");
+}
+catch (Exception ex)
+{
+Console.WriteLine($"[ERROR] LoadData - Erro ao carregar dados: {ex.Message}");
+Console.WriteLine($"[ERROR] LoadData - Stack trace: {ex.StackTrace}");
+}
+finally
+{
+isLoading = false;
+StateHasChanged();
+}
+}
+
+private async Task LoadUserData()
+{
+try
+{
+Console.WriteLine("[DEBUG] LoadUserData - Carregando dados do usuário");
+if (UserStateService.UserId != Guid.Empty)
+{
+var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+Console.WriteLine($"[DEBUG] LoadUserData - Status da resposta: {response.StatusCode}");
+
+if (response.IsSuccessStatusCode)
+{
+var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+if (user != null)
+{
+userName = user.Nome ?? "Utilizador";
+userRole = user.Cargo ?? "Utilizador"; // Set user role
+Console.WriteLine($"[DEBUG] LoadUserData - Nome do usuário carregado: {userName}, Cargo: {userRole}");
+}
+}
+else
+{
+var errorContent = await response.Content.ReadAsStringAsync();
+Console.WriteLine($"[ERROR] LoadUserData - Erro na resposta: {errorContent}");
+}
+}
+}
+catch (Exception ex)
+{
+Console.WriteLine($"[ERROR] LoadUserData - Erro ao carregar dados do usuário: {ex.Message}");
+}
+}
+
+private async Task LoadAllFinancialData()
+{
+try
+{
+Console.WriteLine("[DEBUG] LoadAllFinancialData - Carregando todos os dados financeiros");
+
+// Carregar todas as carteiras
+var carteirasResponse = await Http.GetAsync("http://localhost:5189/api/Carteira");
+if (carteirasResponse.IsSuccessStatusCode)
+{
+allCarteiraEntries = await carteirasResponse.Content.ReadFromJsonAsync<List<CarteiraDto>>() ?? new List<CarteiraDto>();
+}
+
+// Carregar todos os ativos financeiros
+var ativosResponse = await Http.GetAsync("http://localhost:5189/api/AtivosFinanceiros");
+if (ativosResponse.IsSuccessStatusCode)
+{
+allAtivosFinanceiros = await ativosResponse.Content.ReadFromJsonAsync<List<AtivosFinanceiroDto>>() ?? new List<AtivosFinanceiroDto>();
+}
+
+// Carregar todos os depósitos
+var depositosResponse = await Http.GetAsync("http://localhost:5189/api/Deposito");
+if (depositosResponse.IsSuccessStatusCode)
+{
+allDepositos = await depositosResponse.Content.ReadFromJsonAsync<List<DepositoDto>>() ?? new List<DepositoDto>();
+}
+
+// Carregar todos os fundos
+var fundosResponse = await Http.GetAsync("http://localhost:5189/api/FundosInvestimentos");
+if (fundosResponse.IsSuccessStatusCode)
+{
+allFundos = await fundosResponse.Content.ReadFromJsonAsync<List<FundosInvestimentoDto>>() ?? new List<FundosInvestimentoDto>();
+}
+
+// Carregar todos os imóveis
+var imoveisResponse = await Http.GetAsync("http://localhost:5189/api/ImoveisArrendamento");
+if (imoveisResponse.IsSuccessStatusCode)
+{
+allImoveis = await imoveisResponse.Content.ReadFromJsonAsync<List<ImoveisArrendamentoDto>>() ?? new List<ImoveisArrendamentoDto>();
+}
+
+var localizacoesResponse = await Http.GetAsync("http://localhost:5189/api/Localizacoes");
+if (localizacoesResponse.IsSuccessStatusCode)
+{
+allLocalizacoes = await localizacoesResponse.Content.ReadFromJsonAsync<List<LocalizacoDto>>() ?? new List<LocalizacoDto>();
+}
+
+Console.WriteLine("[DEBUG] LoadAllFinancialData - Carregamento de todos os dados financeiros concluído.");
+}
+catch (Exception ex)
+{
+Console.WriteLine($"[ERROR] LoadAllFinancialData - Erro ao carregar todos os dados financeiros: {ex.Message}");
+Console.WriteLine($"[ERROR] LoadAllFinancialData - Stack trace: {ex.StackTrace}");
+}
+}
+
+private async Task GenerateTransactionsFromUserData()
+{
+Console.WriteLine("[DEBUG] GenerateTransactionsFromUserData - Gerando transações para o utilizador logado");
+transactions.Clear();
+int transactionId = 1;
+
+var userSpecificCarteiras = allCarteiraEntries.Where(c => c.UtilizadorId == UserStateService.UserId).ToList();
+
+foreach (var carteira in userSpecificCarteiras)
+{
+var ativo = allAtivosFinanceiros.FirstOrDefault(a => a.Id == carteira.AtivoId);
+if (ativo == null) continue;
+
+string description = "Aquisição de Ativo";
+string category = "Investimento";
+string assetName = "Ativo Desconhecido";
+string type = "Aquisição";
+string notes = "";
+
+// Determine specific asset name and description based on asset type
+switch (ativo.Tipo)
+{
+case "deposito":
+var deposito = allDepositos.FirstOrDefault(d => d.AtivoId == ativo.Id);
+if (deposito != null)
+{
+description = $"Aquisição de Depósito - {deposito.Banco}";
+assetName = $"Depósito {deposito.Banco} (Conta: {deposito.NumeroConta})";
+category = "Depósitos";
+notes = $"Montante inicial: {deposito.MontanteInicial:N2}€, Taxa de Juros: {deposito.TaxaJuros:F2}%";
+}
+break;
+case "fundo_investimento":
+var fundo = allFundos.FirstOrDefault(f => f.AtivoId == ativo.Id);
+if (fundo != null)
+{
+description = $"Investimento em Fundo - {fundo.NomeFundo}";
+assetName = fundo.NomeFundo;
+category = "Fundos de Investimento";
+notes = $"Tipo de Fundo: {fundo.TipoFundo}, Gestora: {fundo.Gestora}";
+}
+break;
+case "imovel_arrendado":
+var imovel = allImoveis.FirstOrDefault(i => i.AtivoId == ativo.Id);
+if (imovel != null)
+{
+var localizacao = allLocalizacoes.FirstOrDefault(l => l.Id == imovel.LocalizacaoId);
+string morada = localizacao != null ? $"{localizacao.Morada}, {localizacao.Cidade}" : "Localização Desconhecida";
+description = $"Aquisição de Imóvel Arrendado - {imovel.Designacao}";
+assetName = imovel.Designacao;
+category = "Imóveis";
+notes = $"Área: {imovel.Area}m², Valor de Renda: {imovel.ValorRenda:N2}€, Morada: {morada}";
+}
+break;
+// Add other asset types if necessary, e.g., "acoes", "obrigacoes", "etf", "criptomoedas", "outros"
+default:
+description = $"Aquisição de Ativo Financeiro - {ativo.Tipo}";
+assetName = ativo.Tipo;
+category = "Outros Investimentos";
+notes = $"Taxa Percentagem: {ativo.TaxaPercentagem:F2}%";
+break;
+}
+
+// Add the transaction representing the asset itself
+transactions.Add(new Transaction
+{
+Id = transactionId++,
+Description = description,
+Category = category,
+Amount = (decimal)carteira.Montante, // Use the amount from Carteira
+Date = carteira.DataInicio, // Use the start date from Carteira
+Asset = assetName,
+Type = type,
+Notes = notes
+});
+}
+
+Console.WriteLine($"[DEBUG] GenerateTransactionsFromUserData - Total de transações geradas para o utilizador: {transactions.Count}");
+}
+
+
+private void CalculateStatistics()
+{
+Console.WriteLine("[DEBUG] CalculateStatistics - Calculando estatísticas");
+var currentMonth = DateTime.Now.Month;
+var currentYear = DateTime.Now.Year;
+
+var monthlyTransactions = transactions.Where(t =>
+t.Date.Month == currentMonth &&
+t.Date.Year == currentYear).ToList();
+
+monthlyIncome = monthlyTransactions.Where(t => t.Amount > 0).Sum(t => t.Amount);
+monthlyExpenses = Math.Abs(monthlyTransactions.Where(t => t.Amount < 0).Sum(t => t.Amount));
+netFlow = monthlyIncome - monthlyExpenses;
+
+Console.WriteLine($"[DEBUG] CalculateStatistics - Receitas: {monthlyIncome:C}, Despesas: {monthlyExpenses:C}, Fluxo: {netFlow:C}");
+}
+
+private void ToggleUserMenu()
+{
+Console.WriteLine("[DEBUG] ToggleUserMenu");
+showUserMenu = !showUserMenu;
+}
+
+private void Logout()
+{
+Console.WriteLine("[DEBUG] Logout");
+UserStateService.UserId = Guid.Empty;
+NavigationManager.NavigateTo("/");
+}
+
+private void ApplyFilters()
+{
+Console.WriteLine("[DEBUG] ApplyFilters - Aplicando filtros");
+filteredTransactions = transactions.Where(t =>
+(string.IsNullOrWhiteSpace(searchTerm) ||
+t.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+t.Category.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+t.Asset.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+(string.IsNullOrWhiteSpace(selectedType) || t.Asset.Contains(selectedType, StringComparison.OrdinalIgnoreCase)) && // Filter by asset type
+(t.Date >= startDate && t.Date <= endDate)
+).OrderByDescending(t => t.Date).ToList();
+
+Console.WriteLine($"[DEBUG] ApplyFilters - Transações filtradas: {filteredTransactions.Count}");
+}
+
+private void ViewTransactionDetails(int id)
+{
+Console.WriteLine($"[DEBUG] ViewTransactionDetails - ID: {id}");
+selectedTransaction = transactions.FirstOrDefault(t => t.Id == id);
+if (selectedTransaction != null)
+{
+Console.WriteLine($"[DEBUG] ViewTransactionDetails - Transação encontrada: {selectedTransaction.Description}");
+showDetailsModal = true;
+}
+else
+{
+Console.WriteLine($"[ERROR] ViewTransactionDetails - Transação não encontrada para ID: {id}");
+}
+}
+
+private void CloseModal()
+{
+Console.WriteLine("[DEBUG] CloseModal");
+showDetailsModal = false;
+selectedTransaction = null;
+}
+
+private async Task ExportUserAssetsReport(bool exportAll)
+{
+try
+{
+Console.WriteLine($"[DEBUG] ExportUserAssetsReport - Iniciando exportação de ativos do utilizador (Exportar Todos: {exportAll})");
+isExporting = true;
+StateHasChanged();
+
+var user = await Http.GetFromJsonAsync<UtilizadoreDto>($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+if (user == null)
+{
+await JSRuntime.InvokeVoidAsync("alert", "Utilizador não encontrado para gerar o relatório de ativos.");
+return;
+}
+
+IEnumerable<CarteiraDto> carteirasToExport;
+
+if (exportAll)
+{
+carteirasToExport = allCarteiraEntries.Where(c => c.UtilizadorId == UserStateService.UserId);
+}
+else
+{
+carteirasToExport = allCarteiraEntries.Where(c =>
+c.UtilizadorId == UserStateService.UserId &&
+c.DataInicio >= startDate &&
+c.DataInicio <= endDate
+);
+}
+
+if (!carteirasToExport.Any())
+{
+await JSRuntime.InvokeVoidAsync("alert", $"Nenhum ativo financeiro encontrado para {user.Nome} com os critérios selecionados.");
+return;
+}
+
+var csvContent = new StringBuilder();
+csvContent.AppendLine($"RELATÓRIO DE ATIVOS FINANCEIROS - {user.Nome}");
+csvContent.AppendLine($"Gerado em: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+if (!exportAll)
+{
+csvContent.AppendLine($"Período: {startDate:dd/MM/yyyy} a {endDate:dd/MM/yyyy}");
+}
+csvContent.AppendLine("");
+csvContent.AppendLine("Tipo de Ativo,Data Início Ativo,Taxa Percentagem Ativo,Montante na Carteira,Data Início na Carteira");
+
+foreach (var carteiraEntry in carteirasToExport)
+{
+var ativo = allAtivosFinanceiros.FirstOrDefault(a => a.Id == carteiraEntry.AtivoId);
+
+if (ativo != null)
+{
+csvContent.AppendLine($"{ativo.Tipo},{ativo.DataInicio:dd/MM/yyyy},{ativo.TaxaPercentagem:F2}%,{carteiraEntry.Montante:C2},{carteiraEntry.DataInicio:dd/MM/yyyy}");
+}
+}
+
+var fileName = $"ativos_financeiros_{user.Nome.Replace(" ", "_")}_{DateTime.Now:yyyy-MM-dd_HH-mm}.csv";
+var bytes = Encoding.UTF8.GetBytes(csvContent.ToString());
+var base64 = Convert.ToBase64String(bytes);
+
+await JSRuntime.InvokeVoidAsync("downloadFile", fileName, base64, "text/csv");
+await JSRuntime.InvokeVoidAsync("alert", $"Relatório de ativos financeiros gerado com sucesso para {user.Nome}!");
+}
+catch (Exception ex)
+{
+Console.WriteLine($"[ERROR] ExportUserAssetsReport - Erro ao gerar relatório de ativos: {ex.Message}");
+await JSRuntime.InvokeVoidAsync("alert", "Erro inesperado ao gerar relatório de ativos. Verifique o console para mais detalhes.");
+}
+finally
+{
+isExporting = false;
+StateHasChanged();
+}
+}
+
+private string FormatCurrency(decimal value)
+{
+return value.ToString("N2", CultureInfo.GetCultureInfo("pt-PT")) + " €";
+}
+
+// Classes de modelo
+public class Transaction
+{
+public int Id { get; set; }
+public string Description { get; set; } = string.Empty;
+public string Category { get; set; } = string.Empty;
+public decimal Amount { get; set; }
+public DateTime Date { get; set; }
+public string Asset { get; set; } = string.Empty;
+public string Type { get; set; } = string.Empty;
+public string Notes { get; set; } = string.Empty;
+}
+
+// Dentro do bloco `@code`, localize as definições das classes DTO e adicione as propriedades em falta.
+
+// Para DepositoDto:
+// Adicione 'Banco' e 'MontanteInicial' e 'TaxaJuros'
+public class DepositoDto
+{
+public Guid Id { get; set; }
+public Guid AtivoId { get; set; }
+public string Banco { get; set; } // Adicionar esta linha
+public float MontanteInicial { get; set; } // Adicionar esta linha
+public float TaxaJuros { get; set; } // Adicionar esta linha
+public string NumeroConta { get; set; } // Adicionar esta linha
+}
+
+// Para ImoveisArrendamentoDto:
+// Adicione 'Designacao', 'Area' e 'ValorRenda'
+public class ImoveisArrendamentoDto
+{
+public Guid Id { get; set; }
+public Guid AtivoId { get; set; }
+public Guid LocalizacaoId { get; set; }
+public string Designacao { get; set; } // Adicionar esta linha
+public float Area { get; set; } // Adicionar esta linha
+public float ValorRenda { get; set; } // Adicionar esta linha
+public float TaxaCondominio { get; set; } // Adicionar esta linha
+}
+
+// Para LocalizacoDto:
+// Adicione 'Morada' e 'Cidade'
+public class LocalizacoDto
+{
+public Guid Id { get; set; }
+public string Morada { get; set; } // Adicionar esta linha
+public string CodigoPostal { get; set; }
+public string Cidade { get; set; } // Adicionar esta linha
+}
+
+// Adicionar as propriedades 'TipoFundo' e 'Gestora' ao FundosInvestimentoDto
+// Localize a definição da classe FundosInvestimentoDto e adicione as seguintes linhas:
+
+public class FundosInvestimentoDto
+{
+public Guid Id { get; set; }
+public Guid AtivoId { get; set; }
+public string NomeFundo { get; set; }
+public string TipoFundo { get; set; } // Adicionar esta linha
+public string Gestora { get; set; }   // Adicionar esta linha
+}
+}
+
+<script>
+    window.downloadFile = (filename, base64Data, contentType) => {
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: contentType });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    };
+
+    // Close dropdowns when clicking outside - This script is no longer strictly needed for the export menu,
+    // but keeping it for other potential dropdowns or future use.
+    document.addEventListener('click', function(event) {
+        const dropdowns = document.querySelectorAll('.dropdown-container');
+        dropdowns.forEach(dropdown => {
+            const menu = dropdown.querySelector('.dropdown-menu');
+            const button = dropdown.querySelector('button');
+            if (menu && !dropdown.contains(event.target) && event.target !== button) {
+                menu.style.display = 'none';
+            }
+        });
+    });
+</script>
+
 <style>
+    /* Global App Container */
+    .app-container {
+        display: flex;
+        min-height: 100vh;
+        background-color: #f8fafc;
+        color: #334155;
+    }
+
+    /* Sidebar Styles */
+    .sidebar {
+        width: 250px;
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        color: white;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        height: 100vh;
+    }
+
+    .sidebar-header {
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .sidebar-header h2 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #e2e8f0;
+    }
+
+    .sidebar-nav {
+        flex-grow: 1;
+    }
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        color: #cbd5e1;
+        text-decoration: none;
+        transition: background-color 0.2s, color 0.2s;
+    }
+
+    .nav-item:hover {
+        background-color: #334155;
+        color: white;
+    }
+
+    .nav-item.active {
+        background-color: #3b82f6;
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 12px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        filter: invert(1); /* Adjust for light icons on dark background */
+    }
+
+    /* Specific icons - replace with actual SVG/icon font if available */
+    .dashboard-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>'); }
+    .portfolio-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v-4h-2Z"></path></svg>'); }
+    .transactions-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>'); }
+    .reports-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>'); }
+    .logout-nav-icon { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>'); }
+
+
+    .sidebar-footer {
+        margin-top: auto; /* Pushes the footer to the bottom */
+        padding-top: 20px;
+        border-top: 1px solid #334155;
+    }
+
+    /* Main Content Area */
+    .main-content {
+        flex-grow: 1;
+        padding: 20px;
+        overflow-y: auto; /* Allows scrolling within the main content */
+    }
+
+    /* Existing styles from previous response */
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f8fafc;
+        color: #334155;
+        line-height: 1.5;
+    }
+
+    .container {
+        padding: 0; /* Removido padding aqui, pois o main-content já tem padding */
+        width: 100%;
+    }
+
+    /* Loading Styles */
     .loading-container {
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 50vh;
+        height: 100vh;
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 
     .loading-spinner {
         text-align: center;
         padding: 2rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 20px;
+        border-radius: 50%;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #667eea;
+        animation: spin 1s linear infinite;
+    }
+
+    .loading-spinner p {
+        margin: 0;
+        color: #333;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    /* Access Denied Styles */
+    .access-denied-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .access-denied-message {
+        text-align: center;
+        padding: 3rem;
+        background-color: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        max-width: 500px;
+    }
+
+    .access-denied-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .access-denied-message h2 {
+        color: #e53e3e;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .redirect-button {
+        margin-top: 1.5rem;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .redirect-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    /* Header */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .dashboard-title h1 {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .dashboard-title p {
+        color: #64748b;
+        font-size: 16px;
+    }
+
+    .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+    }
+
+    .user-greeting {
+        font-size: 16px;
+        color: #64748b;
+    }
+
+    .user-menu-button {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 18px;
+    }
+
+    .user-menu {
+        position: absolute;
+        right: 0;
+        top: 60px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 200px;
+        z-index: 100;
+        overflow: hidden;
+    }
+
+    .user-menu-item {
+        display: block;
+        padding: 12px 16px;
+        color: #334155;
+        text-decoration: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .user-menu-item:hover {
+        background-color: #f8fafc;
+    }
+
+    .user-menu-item.logout {
+        color: #e53e3e;
+    }
+
+    /* Summary Cards */
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 28px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+    }
+
+    .blue-icon { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .red-icon { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+    .green-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .yellow-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+    .card-content h3 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .card-content p {
+        font-size: 15px;
+        color: #64748b;
+    }
+
+    /* Date Filter */
+    .date-filters {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        background: white;
+        border-radius: 12px;
+        padding: 20px 28px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .date-range {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .date-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .date-field label {
+        font-weight: 600;
+        color: #475569;
+        font-size: 15px;
+    }
+
+    .date-field input[type="date"] {
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 15px;
+        background: #f8fafc;
+    }
+
+    .date-field input[type="date"]:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .filter-controls {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .filter-controls select {
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 15px;
+        background: #f8fafc;
+        appearance: none; /* Remove default arrow */
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 16px;
+        padding-right: 30px;
+    }
+
+    .filter-controls select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Transactions List */
+    .transactions-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    #tx_header_section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 28px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    #tx_main_title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .header-buttons {
+        display: flex;
+        gap: 12px;
+    }
+
+    #tx_export_all_btn, #tx_export_by_date_btn { /* Apply styles to both buttons */
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        border: none;
+        background: #3b82f6;
+        color: white;
+    }
+
+    #tx_export_all_btn:hover:not(:disabled), #tx_export_by_date_btn:hover:not(:disabled) {
+        background: #2563eb;
+    }
+
+    #tx_export_all_btn:disabled, #tx_export_by_date_btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    #tx_table_wrapper {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    #tx_data_table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+
+    #tx_data_table th {
+        text-align: left;
+        padding: 20px 28px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 600;
+        font-size: 15px;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    #tx_data_table td {
+        padding: 20px 28px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 15px;
+        vertical-align: middle;
+    }
+
+    #tx_data_table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .tx_positive {
+        color: #16a34a;
+        font-weight: 600;
+    }
+
+    .tx_negative {
+        color: #dc2626;
+        font-weight: 600;
+    }
+
+    .tx_status_badge {
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .tx_concluída {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .tx_pendente {
+        background: #fffbeb;
+        color: #d97706;
+    }
+
+    .tx_cancelada {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .tx_actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-start;
+    }
+
+    .tx_btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .tx_btn.tx_view {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    .tx_btn:hover {
+        transform: scale(1.1);
+    }
+
+    .tx_icon_view {
+        /* Replace with actual SVG/icon font if available */
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        width: 18px;
+        height: 18px;
+        display: block;
     }
 
     .no-transactions-message {
         text-align: center;
-        padding: 2rem;
-        color: #666;
+        padding: 60px 28px;
+        color: #64748b;
         font-style: italic;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+    }
+
+    .modal {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px 28px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .close-button {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #64748b;
+        cursor: pointer;
+        padding: 4px;
+        line-height: 1;
+    }
+
+    .close-button:hover {
+        color: #1e293b;
+    }
+
+    .modal-body {
+        padding: 28px;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 28px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .transaction-details {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .detail-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .detail-group label {
+        font-weight: 600;
+        color: #475569;
+        font-size: 14px;
+    }
+
+    .detail-group p {
+        background: #f8fafc;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 15px;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .user-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 18px;
+        cursor: pointer;
     }
 </style>
