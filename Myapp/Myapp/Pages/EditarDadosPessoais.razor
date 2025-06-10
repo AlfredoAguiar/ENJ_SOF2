@@ -1,0 +1,250 @@
+﻿@page "/profile/edit"
+@using System.ComponentModel.DataAnnotations
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Gestão Ativos</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <div class="nav-icon dashboard-nav-icon"></div>
+                <span>Dashboard</span>
+            </a>
+            <a href="/portfolio" class="nav-item">
+                <div class="nav-icon portfolio-nav-icon"></div>
+                <span>Carteira</span>
+            </a>
+            <a href="/transactions" class="nav-item">
+                <div class="nav-icon transactions-nav-icon"></div>
+                <span>Transações</span>
+            </a>
+            <a href="/reports" class="nav-item">
+                <div class="nav-icon reports-nav-icon"></div>
+                <span>Relatórios</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                <div class="nav-icon logout-nav-icon"></div>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header with Breadcrumbs -->
+        <div class="page-header">
+            <div class="breadcrumbs">
+                <a href="/">Dashboard</a>
+                <span class="separator">/</span>
+                <a href="/profile">Meu Perfil</a>
+                <span class="separator">/</span>
+                <span class="current">Editar Perfil</span>
+            </div>
+            <div class="user-profile">
+                <span class="user-greeting">Olá, <strong>@userProfile.Name</strong></span>
+                <button class="user-menu-button" @onclick="ToggleUserMenu">
+                    <div class="avatar">@userInitials</div>
+                    @if (showUserMenu)
+                    {
+                        <div class="user-menu">
+                            <a href="/profile" class="user-menu-item">Meu Perfil</a>
+                            <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                        </div>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <!-- Page Title -->
+        <div class="page-title-actions">
+            <h1>Editar Perfil</h1>
+            <div class="actions">
+                <button class="action-button" @onclick="CancelEdit">
+                    <span class="action-icon cancel-icon"></span>
+                    Cancelar
+                </button>
+            </div>
+        </div>
+
+        <!-- Edit Profile Form -->
+        <div class="dashboard-section">
+            <EditForm Model="@editModel" OnValidSubmit="SaveChanges">
+                <DataAnnotationsValidator />
+                
+                <div class="edit-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="name">Nome Completo</label>
+                            <InputText id="name" @bind-Value="editModel.Name" class="form-control" />
+                            <ValidationMessage For="@(() => editModel.Name)" class="validation-message" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <InputText id="email" @bind-Value="editModel.Email" class="form-control" />
+                            <ValidationMessage For="@(() => editModel.Email)" class="validation-message" />
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="phone">Telemóvel</label>
+                            <InputText id="phone" @bind-Value="editModel.Phone" class="form-control" />
+                            <ValidationMessage For="@(() => editModel.Phone)" class="validation-message" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="birthdate">Data de Nascimento</label>
+                            <InputDate id="birthdate" @bind-Value="editModel.Birthdate" class="form-control" />
+                            <ValidationMessage For="@(() => editModel.Birthdate)" class="validation-message" />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="address">Morada</label>
+                        <InputText id="address" @bind-Value="editModel.Address" class="form-control" />
+                        <ValidationMessage For="@(() => editModel.Address)" class="validation-message" />
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taxNumber">NIF</label>
+                            <InputText id="taxNumber" @bind-Value="editModel.TaxNumber" class="form-control" />
+                            <ValidationMessage For="@(() => editModel.TaxNumber)" class="validation-message" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="role">Função</label>
+                            <InputText id="role" @bind-Value="editModel.Role" class="form-control" disabled />
+                            <small class="form-text">A função não pode ser alterada pelo utilizador.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="save-button">Guardar Alterações</button>
+                        <button type="button" class="cancel-button" @onclick="CancelEdit">Cancelar</button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+
+        <!-- Security Note -->
+        <div class="info-note">
+            <div class="info-icon"></div>
+            <div class="info-content">
+                <h3>Segurança dos Dados</h3>
+                <p>As suas informações pessoais são protegidas e encriptadas. Nunca partilhamos os seus dados com terceiros sem o seu consentimento explícito.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool showUserMenu = false;
+    private string userInitials => string.Join("", userProfile.Name.Split(' ').Select(n => n[0]));
+
+    private UserProfileModel userProfile = new UserProfileModel
+    {
+        Name = "João Silva",
+        Email = "joao.silva@exemplo.com",
+        Phone = "+351 912 345 678",
+        Birthdate = new DateTime(1985, 5, 15),
+        Address = "Rua das Flores, 123, 4700-000 Braga",
+        TaxNumber = "123456789",
+        Role = "Cliente",
+        MemberSince = new DateTime(2022, 3, 10)
+    };
+    
+    private EditProfileModel editModel = new EditProfileModel();
+    
+    protected override void OnInitialized()
+    {
+        // Inicializar o modelo de edição com os dados atuais do perfil
+        editModel.Name = userProfile.Name;
+        editModel.Email = userProfile.Email;
+        editModel.Phone = userProfile.Phone;
+        editModel.Birthdate = userProfile.Birthdate;
+        editModel.Address = userProfile.Address;
+        editModel.TaxNumber = userProfile.TaxNumber;
+        editModel.Role = userProfile.Role;
+        
+        base.OnInitialized();
+    }
+
+    private void SaveChanges()
+    {
+        // Aqui seria implementada a lógica para salvar as alterações no backend
+        
+        // Atualizar o modelo de perfil com os dados editados
+        userProfile.Name = editModel.Name;
+        userProfile.Email = editModel.Email;
+        userProfile.Phone = editModel.Phone;
+        userProfile.Birthdate = editModel.Birthdate;
+        userProfile.Address = editModel.Address;
+        userProfile.TaxNumber = editModel.TaxNumber;
+        
+        // Redirecionar de volta para a página de perfil
+        NavigationManager.NavigateTo("/profile");
+    }
+    
+    private void CancelEdit()
+    {
+        // Cancelar edição e voltar para a página de perfil
+        NavigationManager.NavigateTo("/profile");
+    }
+    
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+
+    private void Logout()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+    public class UserProfileModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public DateTime Birthdate { get; set; }
+        public string Address { get; set; } = string.Empty;
+        public string TaxNumber { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public DateTime MemberSince { get; set; }
+    }
+    
+    public class EditProfileModel
+    {
+        [Required(ErrorMessage = "O nome é obrigatório")]
+        [StringLength(100, ErrorMessage = "O nome deve ter entre {2} e {1} caracteres", MinimumLength = 3)]
+        public string Name { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "O email é obrigatório")]
+        [EmailAddress(ErrorMessage = "O email não é válido")]
+        public string Email { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "O telefone é obrigatório")]
+        [RegularExpression(@"^\+?[0-9\s\-\(\)]+$", ErrorMessage = "O telefone não é válido")]
+        public string Phone { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "A data de nascimento é obrigatória")]
+        public DateTime Birthdate { get; set; }
+        
+        [Required(ErrorMessage = "A morada é obrigatória")]
+        public string Address { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "O NIF é obrigatório")]
+        [RegularExpression(@"^\d{9}$", ErrorMessage = "O NIF deve conter 9 dígitos")]
+        public string TaxNumber { get; set; } = string.Empty;
+        
+        public string Role { get; set; } = string.Empty;
+    }
+}

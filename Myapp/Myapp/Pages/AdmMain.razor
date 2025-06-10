@@ -1,0 +1,875 @@
+@page "/main2"
+@attribute [Authorize]
+@using System.Net
+@using WebApplication5.DTO
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@inject UserStateService UserStateService
+
+@if (isAuthenticated && isAdmin)
+{
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Painel Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/main2" class="nav-item active">
+                    <div class="nav-icon dashboard-nav-icon"></div>
+                    <span>Gestão de Utilizadores</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="javascript:void(0)" @onclick="Logout" class="nav-item logout">
+                    <div class="nav-icon logout-nav-icon"></div>
+                    <span>Sair</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            @if (isLoading)
+            {
+                <div class="loading-container">
+                    <div class="loading-spinner">
+                        <p>Carregando utilizadores...</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Top Header -->
+                <header class="dashboard-header">
+                    <div class="dashboard-title">
+                        <h1>Gestão de Utilizadores</h1>
+                        <p>Administração de todos os utilizadores do sistema</p>
+                    </div>
+                    <div class="user-profile">
+                        <span class="user-greeting">Olá, <strong>@userName</strong> (Admin)</span>
+                        <button class="user-menu-button" @onclick="ToggleUserMenu">
+                            <div class="avatar">@userInitials</div>
+                            @if (showUserMenu)
+                            {
+                                <div class="user-menu">
+                                    <a href="javascript:void(0)" @onclick="Logout" class="user-menu-item logout">Sair</a>
+                                </div>
+                            }
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="card-icon blue-icon">👥</div>
+                        <div class="card-content">
+                            <h3>@totalUsers</h3>
+                            <p>Total de Utilizadores</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon green-icon">👤</div>
+                        <div class="card-content">
+                            <h3>@regularUsers</h3>
+                            <p>Utilizadores</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon yellow-icon">👨‍💼</div>
+                        <div class="card-content">
+                            <h3>@managers</h3>
+                            <p>Gestores</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon red-icon">👑</div>
+                        <div class="card-content">
+                            <h3>@admins</h3>
+                            <p>Administradores</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Management -->
+                <div class="users-container">
+                    <!-- Search and Filter -->
+                    <div class="actions-bar">
+                        <div class="search-container">
+                            <input type="text" placeholder="Pesquisar utilizadores..." @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchUsers" />
+                            <select @bind="selectedUserType" @bind:after="FilterUsers">
+                                <option value="">Todos os Tipos</option>
+                                <option value="Utilizador">Utilizadores</option>
+                                <option value="GestorUtilizadores">Gestores</option>
+                                <option value="Administrador">Administradores</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Users List -->
+                    <div id="users_header_section">
+                        <h2 id="users_main_title">Lista de Utilizadores</h2>
+                    </div>
+
+                    <div id="users_table_wrapper">
+                        <table id="users_data_table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Tipo</th>
+                                    <th>ID</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (filteredUsers.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="5" class="no-users-message">
+                                            Nenhum utilizador encontrado com os filtros atuais.
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var user in filteredUsers)
+                                    {
+                                        <tr class="user_table_row">
+                                            <td class="user_name">@user.Nome</td>
+                                            <td class="user_email">@user.Email</td>
+                                            <td class="user_type">
+                                                <span class="user_type_badge user_@user.Cargo.ToLower()">@GetUserTypeDisplayName(user.Cargo)</span>
+                                            </td>
+                                            <td class="user_id">@user.Id.ToString("N")[..8]...</td>
+                                            <td class="user_actions">
+                                                @if (user.Id != UserStateService.UserId)
+                                                {
+                                                    <button class="user_btn user_edit" @onclick="() => EditUser(user)" title="Editar">
+                                                        ✏️
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <span class="current-user-badge">Você</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    @if (showEditModal && selectedUser != null)
+    {
+        <div class="modal-overlay">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>Editar Utilizador</h2>
+                    <button class="close-button" @onclick="CloseModal">×</button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert-error">
+                            <span class="alert-icon">!</span>
+                            <span>@errorMessage</span>
+                        </div>
+                    }
+
+                    <div class="form-container">
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" @bind="editingUser.Nome" readonly />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" @bind="editingUser.Email" readonly />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tipo de Utilizador</label>
+                            <select @bind="editingUser.Cargo" disabled="@(selectedUser.Id == UserStateService.UserId)">
+                                <option value="Utilizador">Utilizador</option>
+                                <option value="GestorUtilizadores">Gestor de Utilizadores</option>
+                                @if (selectedUser.Id != UserStateService.UserId)
+                                {
+                                    <option value="Administrador">Administrador</option>
+                                }
+                            </select>
+                            @if (selectedUser.Id == UserStateService.UserId)
+                            {
+                                <small class="form-text">Não pode alterar o seu próprio tipo de utilizador</small>
+                            }
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>ID do Utilizador</label>
+                            <input type="text" value="@editingUser.Id" readonly />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="cancel-button" @onclick="CloseModal" disabled="@isSaving">Cancelar</button>
+                    <button class="save-button" @onclick="SaveUser" disabled="@(isSaving || selectedUser.Id == UserStateService.UserId)">
+                        @if (isSaving)
+                        {
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>Salvar Alterações</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+}
+else if (isAuthenticated && !isAdmin)
+{
+    <div class="access-denied">
+        <h1>Acesso Negado</h1>
+        <p>Você não tem permissão para acessar esta página.</p>
+        <button @onclick="RedirectToMain">Voltar ao Dashboard</button>
+    </div>
+}
+
+@code {
+    private bool isAuthenticated = false;
+    private bool isAdmin = false;
+    private bool isLoading = true;
+    private string userName = "Administrador";
+    private string userInitials => string.Join("", userName.Split(' ').Select(n => n[0]));
+    private bool showUserMenu = false;
+    private string errorMessage = "";
+
+    // User Management
+    private List<UtilizadoreDto> users = new List<UtilizadoreDto>();
+    private List<UtilizadoreDto> filteredUsers = new List<UtilizadoreDto>();
+    private string searchTerm = "";
+    private string selectedUserType = "";
+
+    // Statistics
+    private int totalUsers = 0;
+    private int regularUsers = 0;
+    private int managers = 0;
+    private int admins = 0;
+
+    // Modal States
+    private bool showEditModal = false;
+    private bool isSaving = false;
+    private UtilizadoreDto selectedUser;
+    private UtilizadoreDto editingUser = new UtilizadoreDto();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!ValidateAuthentication())
+        {
+            return;
+        }
+
+        await LoadData();
+    }
+
+    private bool ValidateAuthentication()
+    {
+        try
+        {
+            if (UserStateService == null || UserStateService.UserId == Guid.Empty)
+            {
+                Console.WriteLine("❌ Usuário não está logado");
+                RedirectToLogin();
+                return false;
+            }
+
+            isAuthenticated = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro na validação de autenticação: {ex.Message}");
+            RedirectToLogin();
+            return false;
+        }
+    }
+
+    private void RedirectToLogin()
+    {
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+
+    private void RedirectToMain()
+    {
+        NavigationManager.NavigateTo("/main");
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            await LoadUserData();
+            
+            if (!isAdmin)
+            {
+                isLoading = false;
+                StateHasChanged();
+                return;
+            }
+
+            await LoadAllUsers();
+            CalculateStatistics();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar dados: {ex.Message}");
+            errorMessage = "Erro ao carregar dados dos utilizadores.";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUserData()
+    {
+        try
+        {
+            var response = await Http.GetAsync($"http://localhost:5189/api/Utilizadore/{UserStateService.UserId}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var user = await response.Content.ReadFromJsonAsync<UtilizadoreDto>();
+                if (user != null)
+                {
+                    userName = user.Nome ?? "Administrador";
+                    isAdmin = user.Cargo == "Administrador";
+                    
+                    if (!isAdmin)
+                    {
+                        Console.WriteLine($"❌ Usuário {userName} não é administrador (Cargo: {user.Cargo})");
+                    }
+                }
+            }
+            else
+            {
+                throw new UnauthorizedAccessException("Não foi possível carregar dados do usuário");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar dados do usuário: {ex.Message}");
+            RedirectToLogin();
+        }
+    }
+
+    private async Task LoadAllUsers()
+    {
+        try
+        {
+            var response = await Http.GetAsync("http://localhost:5189/api/Utilizadore");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                users = await response.Content.ReadFromJsonAsync<List<UtilizadoreDto>>() ?? new List<UtilizadoreDto>();
+                Console.WriteLine($"✅ {users.Count} utilizadores carregados");
+            }
+            else
+            {
+                throw new Exception($"Erro ao carregar utilizadores: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao carregar utilizadores: {ex.Message}");
+            errorMessage = "Erro ao carregar lista de utilizadores.";
+        }
+    }
+
+    private void CalculateStatistics()
+    {
+        totalUsers = users.Count;
+        regularUsers = users.Count(u => u.Cargo == "Utilizador");
+        managers = users.Count(u => u.Cargo == "GestorUtilizadores");
+        admins = users.Count(u => u.Cargo == "Administrador");
+    }
+
+    private void SearchUsers()
+    {
+        ApplyFilters();
+    }
+
+    private void FilterUsers()
+    {
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        filteredUsers = users.Where(u =>
+            (string.IsNullOrWhiteSpace(searchTerm) ||
+             u.Nome.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+             u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(selectedUserType) || u.Cargo == selectedUserType)
+        ).OrderBy(u => u.Nome).ToList();
+    }
+
+    private void EditUser(UtilizadoreDto user)
+    {
+        selectedUser = user;
+        editingUser = new UtilizadoreDto
+        {
+            Id = user.Id,
+            Nome = user.Nome,
+            Email = user.Email,
+            Cargo = user.Cargo,
+            Senha = user.Senha,
+            PermissaoId = user.PermissaoId
+        };
+        errorMessage = "";
+        showEditModal = true;
+    }
+
+    private async Task SaveUser()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = "";
+            StateHasChanged();
+
+            // Validação: não permitir que o admin altere seu próprio tipo
+            if (selectedUser.Id == UserStateService.UserId)
+            {
+                errorMessage = "Não pode alterar o seu próprio tipo de utilizador.";
+                return;
+            }
+
+            // Validação: garantir que sempre existe pelo menos um admin
+            if (selectedUser.Cargo == "Administrador" && editingUser.Cargo != "Administrador")
+            {
+                var remainingAdmins = users.Count(u => u.Cargo == "Administrador" && u.Id != selectedUser.Id);
+                if (remainingAdmins == 0)
+                {
+                    errorMessage = "Deve existir pelo menos um administrador no sistema.";
+                    return;
+                }
+            }
+
+            var response = await Http.PutAsJsonAsync($"http://localhost:5189/api/Utilizadore/{editingUser.Id}", editingUser);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Atualizar a lista local
+                var userIndex = users.FindIndex(u => u.Id == editingUser.Id);
+                if (userIndex >= 0)
+                {
+                    users[userIndex] = editingUser;
+                }
+
+                CalculateStatistics();
+                ApplyFilters();
+                CloseModal();
+
+                Console.WriteLine($"✅ Utilizador {editingUser.Nome} atualizado com sucesso");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Erro ao atualizar utilizador: {response.StatusCode} - {errorContent}");
+                errorMessage = "Erro ao salvar alterações. Tente novamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro ao salvar utilizador: {ex.Message}");
+            errorMessage = "Erro inesperado ao salvar alterações.";
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseModal()
+    {
+        showEditModal = false;
+        selectedUser = null;
+        editingUser = new UtilizadoreDto();
+        errorMessage = "";
+    }
+
+    private string GetUserTypeDisplayName(string cargo)
+    {
+        return cargo switch
+        {
+            "Utilizador" => "Utilizador",
+            "GestorUtilizadores" => "Gestor",
+            "Administrador" => "Admin",
+            _ => cargo
+        };
+    }
+
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+
+    private void Logout()
+    {
+        try
+        {
+            UserStateService.UserId = Guid.Empty;
+            isAuthenticated = false;
+            Console.WriteLine("✅ Logout realizado com sucesso");
+            NavigationManager.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Erro durante logout: {ex.Message}");
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}
+
+<style>
+    .access-denied {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .access-denied h1 {
+        color: #dc3545;
+        margin-bottom: 1rem;
+    }
+
+    .access-denied p {
+        color: #6c757d;
+        margin-bottom: 2rem;
+    }
+
+    .access-denied button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .access-denied button:hover {
+        background: #0056b3;
+    }
+
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 50vh;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .no-users-message {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+        font-style: italic;
+    }
+
+    .user_type_badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .user_utilizador {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .user_gestorutilizadores {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
+    .user_administrador {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .current-user-badge {
+        background-color: #e2e3e5;
+        color: #495057;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+
+    .user_btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+    }
+
+    .user_btn:hover {
+        background-color: #f8f9fa;
+    }
+
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .blue-icon {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+    }
+
+    .green-icon {
+        background: linear-gradient(135deg, #10b981, #047857);
+        color: white;
+    }
+
+    .yellow-icon {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+    }
+
+    .red-icon {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+
+    .card-content h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .card-content p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .actions-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+    }
+
+    .search-container {
+        display: flex;
+        gap: 1rem;
+        flex: 1;
+    }
+
+    .search-container input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+    }
+
+    .search-container select {
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        min-width: 200px;
+    }
+
+    #users_table_wrapper {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #users_data_table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #users_data_table th {
+        background: #f8f9fa;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    #users_data_table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .user_table_row:hover {
+        background-color: #f9fafb;
+    }
+
+    .alert-error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 6px;
+        border: 1px solid #f5c6cb;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .alert-icon {
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+
+    .form-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #333;
+        font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+    }
+
+    .form-group input[readonly] {
+        background-color: #f8f9fa;
+        color: #6c757d;
+    }
+
+    .form-text {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+
+    .save-button {
+        background: linear-gradient(135deg, #28a745, #1e7e34);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .save-button:hover:not(:disabled) {
+        background: linear-gradient(135deg, #1e7e34, #155724);
+        transform: translateY(-1px);
+    }
+
+    .save-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .cancel-button {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .cancel-button:hover:not(:disabled) {
+        background: #5a6268;
+        transform: translateY(-1px);
+    }
+
+    .cancel-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+</style>
